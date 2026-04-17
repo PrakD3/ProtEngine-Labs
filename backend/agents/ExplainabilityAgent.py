@@ -124,8 +124,13 @@ class ExplainabilityAgent:
             ),
         }
 
-        summary = await self._generate_summary(gene, mutation, top_lead, top_sel, trials)
-        return {"reasoning_trace": trace, "summary": summary}
+        summary, provider = await self._generate_summary(
+            gene, mutation, top_lead, top_sel, trials
+        )
+        result = {"reasoning_trace": trace, "summary": summary}
+        if provider:
+            result["llm_provider_used"] = provider
+        return result
 
     async def _generate_summary(
         self,
@@ -134,7 +139,7 @@ class ExplainabilityAgent:
         top_lead: dict,
         top_sel: dict,
         trials: list,
-    ) -> str:
+    ) -> tuple[str, str | None]:
         try:
             from utils.llm_router import LLMRouter
 
@@ -146,14 +151,14 @@ class ExplainabilityAgent:
                 f"{top_sel.get('off_target_name', 'unknown')}. "
                 f"Clinical trials found: {len(trials)}."
             )
-            result, _ = await LLMRouter(
+            result, provider = await LLMRouter(
                 "You are a drug discovery scientist writing a clear summary."
             ).generate(prompt, 300)
-            return result
+            return result, provider
         except Exception:
             return (
                 f"Drug discovery pipeline completed for {gene} {mutation}. "
                 f"Top lead achieves {top_lead.get('binding_energy', 'N/A')} kcal/mol binding affinity "
                 f"with {top_sel.get('selectivity_ratio', 'N/A')}x selectivity over off-target proteins. "
                 f"{len(trials)} active clinical trials provide real-world context for this target."
-            )
+            ), None

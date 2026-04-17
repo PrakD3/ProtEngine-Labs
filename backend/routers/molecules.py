@@ -16,6 +16,8 @@ async def get_molecules(session_id: str):
         "session_id": session_id,
         "query": state.get("query"),
         "mutation_context": state.get("mutation_context"),
+        "structures": state.get("structures", []),
+        "pdb_content": state.get("pdb_content", ""),
         "generated_molecules": state.get("generated_molecules", []),
         "docking_results": state.get("docking_results", []),
         "selectivity_results": state.get("selectivity_results", []),
@@ -36,4 +38,5 @@ async def get_molecules(session_id: str):
         "agent_statuses": state.get("agent_statuses", {}),
         "execution_time_ms": state.get("execution_time_ms", 0),
         "langsmith_run_id": state.get("langsmith_run_id"),
+        "llm_provider_used": state.get("llm_provider_used", "unknown"),
     }

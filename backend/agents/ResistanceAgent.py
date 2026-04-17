@@ -64,19 +64,22 @@ class ResistanceAgent:
                 }
             )
 
-        forecast = await self._forecast(gene, mutation, resistant_drugs, recommended_drugs)
-        return {
+        forecast, provider = await self._forecast(gene, mutation, resistant_drugs, recommended_drugs)
+        result = {
             "resistance_flags": flags,
             "resistant_drugs": resistant_drugs,
             "recommended_drugs": recommended_drugs,
             "resistance_forecast": forecast,
         }
+        if provider:
+            result["llm_provider_used"] = provider
+        return result
 
     async def _forecast(
         self, gene: str, mutation: str, resistant: list, recommended: list
-    ) -> str | None:
+    ) -> tuple[str | None, str | None]:
         if not gene or not mutation:
-            return None
+            return None, None
         try:
             from utils.llm_router import LLMRouter
 
@@ -85,9 +88,9 @@ class ResistanceAgent:
                 f"what secondary/compensatory mutations might emerge under treatment pressure "
                 f"with {recommended}? Answer in 2-3 sentences with specific mutation predictions."
             )
-            forecast, _ = await LLMRouter("You are a clinical oncology expert.").generate(
+            forecast, provider = await LLMRouter("You are a clinical oncology expert.").generate(
                 prompt, max_tokens=200
             )
-            return forecast
+            return forecast, provider
         except Exception:
-            return None
+            return None, None

@@ -4,15 +4,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { RankedLead } from "@/app/lib/types";
 import { SelectivityBadge } from "./SelectivityBadge";
 import { MoleculeViewer2D } from "./MoleculeViewer2D";
+import { MoleculeViewer3D } from "./MoleculeViewer3D";
+import { Switch } from "@/app/components/ui/switch";
 import { Badge } from "@/app/components/ui/badge";
 import { AlertTriangle, ShieldCheck, ShieldX } from "lucide-react";
 
 interface Props {
   lead: RankedLead;
   rank: number;
+  pdbId?: string;
 }
 
-export function MoleculeCard({ lead, rank }: Props) {
+export function MoleculeCard({ lead, rank, pdbId }: Props) {
   const [show3D, setShow3D] = useState(false);
 
   const scoreColor =
@@ -59,20 +62,17 @@ export function MoleculeCard({ lead, rank }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="flex items-center justify-center h-36 bg-[var(--muted)] rounded text-xs text-[var(--muted-foreground)]">
-              3D Viewer (click again to hide)
-            </div>
+            <MoleculeViewer3D pdbId={pdbId} className="h-36" />
           </motion.div>
         )}
       </AnimatePresence>
 
-      <button
-        type="button"
-        onClick={() => setShow3D(!show3D)}
-        className="text-xs text-[var(--primary)] hover:underline"
-      >
-        {show3D ? "Show 2D" : "Show 3D"}
-      </button>
+      <div className="flex items-center gap-2">
+        <Switch checked={show3D} onCheckedChange={setShow3D} />
+        <span className="text-xs text-[var(--muted-foreground)]">
+          {show3D ? "3D Protein" : "2D Molecule"}
+        </span>
+      </div>
 
       <div className="flex flex-wrap gap-1.5 items-center">
         <SelectivityBadge

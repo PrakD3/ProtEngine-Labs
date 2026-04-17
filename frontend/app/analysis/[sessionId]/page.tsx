@@ -68,6 +68,7 @@ export default function AnalysisPage({ params }: PageProps) {
   const report = result?.final_report as FinalReport | null;
   const selectivity = (result?.selectivity_results ??
     []) as SelectivityResult[];
+  const primaryPdbId = result?.structures?.[0]?.pdb_id;
 
   return (
     <div
@@ -206,6 +207,7 @@ export default function AnalysisPage({ params }: PageProps) {
                           key={lead.smiles}
                           lead={lead}
                           rank={lead.rank}
+                          pdbId={primaryPdbId}
                         />
                       ))}
                     </div>

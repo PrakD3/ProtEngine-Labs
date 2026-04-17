@@ -26,13 +26,18 @@ class MutationParserAgent:
 
     async def _execute(self, state: dict) -> dict:
         query = state.get("query", "")
-        ctx = await self._llm_extract(query)
+        ctx, provider = await self._llm_extract(query)
         if not ctx:
             ctx = self._regex_extract(query)
+            provider = provider or "regex"
         curated = self._lookup_curated(ctx, query)
-        return {"mutation_context": ctx, "curated_profile": curated}
+        return {
+            "mutation_context": ctx,
+            "curated_profile": curated,
+            "llm_provider_used": provider or "unknown",
+        }
 
-    async def _llm_extract(self, query: str) -> dict | None:
+    async def _llm_extract(self, query: str) -> tuple[dict | None, str | None]:
         try:
             from utils.llm_router import LLMRouter
 
@@ -40,12 +45,12 @@ class MutationParserAgent:
                 "You are a biomedical NLP expert. Extract mutation info from the query as JSON only: "
                 "{gene, mutation, hgvs, disease_context, is_mutation, is_disease}. No markdown, no extra text."
             )
-            raw, _ = await router.generate(query, max_tokens=200)
+            raw, provider = await router.generate(query, max_tokens=200)
             raw = raw.strip().strip("```json").strip("```").strip()
             parsed = json.loads(raw)
-            return parsed
+            return parsed, provider
         except Exception:
-            return None
+            return None, None
 
     def _regex_extract(self, query: str) -> dict:
         pattern = r"(?P<gene>[A-Z][A-Z0-9\-]+)\s+(?P<mutation>[A-Z]?\d+[A-Za-z]+)"

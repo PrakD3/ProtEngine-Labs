@@ -5,7 +5,6 @@ import os
 
 class LLMRouter:
     PROVIDERS = [
-        ("openai", "gpt-4o-mini", "OPENAI_API_KEY"),
         ("groq", "llama-3.3-70b-versatile", "GROQ_API_KEY"),
         ("together", "mistralai/Mistral-7B-Instruct-v0.2", "TOGETHER_API_KEY"),
     ]

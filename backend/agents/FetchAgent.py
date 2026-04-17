@@ -31,11 +31,50 @@ class FetchAgent:
         curated = state.get("curated_profile")
 
         if curated:
+            literature = curated.get("literature", [])
+            proteins = curated.get("targets", [])
+            structures = curated.get("structures", [])
+            compounds = curated.get("known_compounds", [])
+
+            tasks = []
+            labels = []
+
+            if not literature:
+                labels.append("literature")
+                curated_query = (
+                    curated.get("literature_query")
+                    or f"{curated.get('gene', '')} {curated.get('mutation', '')}".strip()
+                    or query
+                )
+                tasks.append(self._fetch_pubmed(curated_query))
+            if not proteins:
+                labels.append("proteins")
+                tasks.append(self._fetch_uniprot(curated.get("gene", gene), query))
+            if not structures:
+                labels.append("structures")
+                tasks.append(self._fetch_rcsb(query))
+            if not compounds:
+                labels.append("known_compounds")
+                tasks.append(self._fetch_pubchem(curated.get("gene", gene)))
+
+            if tasks:
+                fetched = await asyncio.gather(*tasks, return_exceptions=True)
+                for label, value in zip(labels, fetched):
+                    if isinstance(value, list):
+                        if label == "literature":
+                            literature = value
+                        elif label == "proteins":
+                            proteins = value
+                        elif label == "structures":
+                            structures = value
+                        elif label == "known_compounds":
+                            compounds = value
+
             return {
-                "literature": curated.get("literature", []),
-                "proteins": curated.get("targets", []),
-                "structures": curated.get("structures", []),
-                "known_compounds": curated.get("known_compounds", []),
+                "literature": literature,
+                "proteins": proteins,
+                "structures": structures,
+                "known_compounds": compounds,
             }
 
         lit, proteins, structures, compounds = await asyncio.gather(
