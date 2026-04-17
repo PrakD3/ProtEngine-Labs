@@ -52,6 +52,10 @@ class OrchestratorAgent:
     """Runs the full 17-agent pipeline sequentially with SSE events."""
 
     async def run_pipeline(self, query: str, session_id: str, mode: str = "full") -> dict:
+        from utils.logger import get_logger
+        log = get_logger("orchestrator")
+        log.info(f"Starting pipeline for session {session_id}: {query}")
+        
         start = time.time()
         
         # Get existing session if it was pre-initialized, or create new one

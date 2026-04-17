@@ -4,8 +4,14 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from utils.db import init_db
 import warnings
+import os
 
-load_dotenv()
+# Load .env from backend directory explicitly
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
+# Verify DATABASE_URL is loaded
+if not os.getenv("DATABASE_URL"):
+    print("WARNING: DATABASE_URL not loaded from .env file")
 
 # Suppress optional dependency warnings
 warnings.filterwarnings("ignore", message=".*PyTorch.*")

@@ -55,12 +55,23 @@ async def save_discovery(state: dict) -> str:
     engine = get_engine()
     if not engine:
         return ""
+    
+    # If already saved, return existing discovery_id
+    if state.get("discovery_id"):
+        return state.get("discovery_id")
+    
     try:
         report = state.get("final_report") or {}
         leads = report.get("ranked_leads", [{}])
         top = leads[0] if leads else {}
         ctx = state.get("mutation_context") or {}
         did = str(uuid.uuid4())
+        
+        # Create a summary from available data
+        summary = report.get("summary", "")
+        if not summary and state.get("query"):
+            summary = f"Analysis of {state.get('query')}"
+        
         async with engine.begin() as conn:
             await conn.execute(
                 text("""
@@ -79,8 +90,8 @@ async def save_discovery(state: dict) -> str:
                     "smiles": top.get("smiles", ""),
                     "score": top.get("docking_score"),
                     "sel": top.get("selectivity_ratio"),
-                    "summary": report.get("summary", ""),
-                    "report": json.dumps(report),
+                    "summary": summary,
+                    "report": json.dumps(report) if report else "{}",
                     "ls_id": state.get("langsmith_run_id", ""),
                 },
             )
@@ -89,6 +100,8 @@ async def save_discovery(state: dict) -> str:
         from utils.logger import get_logger
 
         get_logger("db").error(f"save_discovery: {e}")
+        import traceback
+        traceback.print_exc()
         return ""
 
 

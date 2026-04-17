@@ -29,7 +29,10 @@ async def save_session(session_id: str):
         raise HTTPException(status_code=404, detail="Session not found")
     did = await save_discovery(state)
     if not did:
-        raise HTTPException(status_code=500, detail="DB not configured or save failed")
+        from utils.db import get_engine
+        engine = get_engine()
+        detail = "DB not configured" if not engine else "DB insert failed"
+        raise HTTPException(status_code=500, detail=detail)
     return {"discovery_id": did}
 
 

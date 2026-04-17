@@ -38,9 +38,9 @@ except Exception as e:
     print(f"❌ Failed to create session: {e}")
     exit(1)
 
-# Step 3: Wait for session to populate
-print("\n[3] Waiting 3 seconds for session initialization...")
-time.sleep(3)
+# Step 3: Wait for session to populate and pipeline to complete
+print("\n[3] Waiting 15 seconds for pipeline to complete and auto-save...")
+time.sleep(15)
 
 # Step 4: Save discovery
 print(f"\n[4] Saving discovery from session {session_id}...")
@@ -55,7 +55,8 @@ try:
         print(f"✅ Saved! Discovery ID: {discovery_id}")
 except urllib.error.HTTPError as e:
     error_data = json.loads(e.read())
-    print(f"❌ HTTP {e.code}: {error_data['detail']}")
+    error_detail = error_data.get('detail', 'Unknown error')
+    print(f"❌ HTTP {e.code}: {error_detail}")
     exit(1)
 except Exception as e:
     print(f"❌ Error: {e}")
