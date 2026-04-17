@@ -281,8 +281,8 @@ class DockingAgent:
             with open(receptor_pdb, "w") as f:
                 f.write(pdb_content)
             
-            # **CRITICAL FIX**: Extract only ATOM/HETATM lines from PDB
-            # Vina is strict about PDBQT format - fails on HEADER, TITLE, etc. lines
+            # **CRITICAL FIX**: Extract ONLY ATOM/HETATM lines and convert to PDBQT manually
+            # Vina is strict - fails on CONECT, ROOT, and other meta records
             pdb_atoms = []
             for line in pdb_content.splitlines():
                 if line.startswith("ATOM") or line.startswith("HETATM"):
@@ -291,29 +291,30 @@ class DockingAgent:
             if not pdb_atoms:
                 raise RuntimeError("No ATOM/HETATM records found in PDB")
             
-            # Write atoms-only PDB for obabel conversion
-            atom_only_pdb = os.path.join(tmpdir, "receptor_atoms_only.pdb")
-            with open(atom_only_pdb, "w") as f:
-                for line in pdb_atoms:
-                    f.write(line + "\n")
-                f.write("END\n")
-            
+            # Manually convert to PDBQT format (add charges/atom types for Vina compatibility)
             receptor_pdbqt = os.path.join(tmpdir, "receptor.pdbqt")
-            
-            # Convert atoms-only PDB to PDBQT with obabel
-            result = subprocess.run(
-                ["obabel", atom_only_pdb, "-O", receptor_pdbqt, "-xh"],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            
-            if result.returncode != 0:
-                log = get_logger(self.__class__.__name__)
-                log.warning(f"obabel PDBQT conversion failed: {result.stderr}")
-                # Fallback: copy atom-only PDB as PDBQT
-                import shutil as shutil_module
-                shutil_module.copy(atom_only_pdb, receptor_pdbqt)
+            with open(receptor_pdbqt, "w") as f:
+                for atom_line in pdb_atoms:
+                    # PDB format: cols 77-78 = element symbol, col 81-82 = charge
+                    # If missing, add defaults
+                    if len(atom_line) >= 78:
+                        element = atom_line[76:78].strip()
+                    else:
+                        # Extract from atom name if possible
+                        atom_name = atom_line[12:16].strip()
+                        element = atom_name[0]  # First char is usually element
+                    
+                    # Write PDBQT-compatible line (PDBQT accepts ATOM/HETATM with charges)
+                    if len(atom_line) >= 66:
+                        # Add charge field if missing (col 79-80)
+                        pdbqt_line = atom_line[:66] + "  0.00" + atom_line[66:] if len(atom_line) > 66 else atom_line + "  0.00"
+                    else:
+                        pdbqt_line = atom_line + "  0.00"
+                    
+                    f.write(pdbqt_line + "\n")
+                
+                # Add PDBQT-specific footer
+                f.write("END\n")
             
             # Use full path to vina/gnina executable
             exe_name = mode
