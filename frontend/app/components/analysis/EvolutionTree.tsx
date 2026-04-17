@@ -202,7 +202,7 @@ export function EvolutionTree({ tree }: Props) {
                   background: "var(--card)",
                   borderColor: node.admet_pass
                     ? "color-mix(in srgb, var(--stability-stable) 35%, var(--border))"
-                    : "color-mix(in srgb, var(--stability-unstable) 28%, var(--border)),
+                    : "color-mix(in srgb, var(--stability-unstable) 28%, var(--border))"
                 }}
               >
                 {/* Score + ADMET row */}
