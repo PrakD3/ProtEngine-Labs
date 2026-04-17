@@ -40,11 +40,15 @@ class DockingAgent:
         mode = "gnina" if has_gnina else ("vina" if has_vina else "ai_fallback")
 
         results = []
+        skipped = 0
         for mol in molecules[:50]:
             smiles = mol.get("smiles", "")
             if not smiles:
                 continue
             energy = await self._dock(smiles, pocket, pdb_id, protein_name, mode)
+            if energy is None:
+                skipped += 1
+                continue
             if isinstance(energy, float) and energy < 0:
                 results.append(
                     {
@@ -63,6 +67,19 @@ class DockingAgent:
     async def _dock(
         self, smiles: str, pocket: dict, pdb_id: str, protein_name: str, mode: str
     ) -> float:
+        from rdkit import Chem
+
+        # Validate molecule before docking
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            return None
+
+        # Check for valence issues
+        try:
+            Chem.SanitizeMol(mol)
+        except Exception:
+            return None
+
         if mode == "ai_fallback":
             return self._ai_score(smiles, pdb_id, protein_name)
         try:
@@ -88,9 +105,27 @@ class DockingAgent:
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             raise ValueError("Invalid SMILES")
+
         mol = Chem.AddHs(mol)
-        AllChem.EmbedMolecule(mol, AllChem.ETKDG())
-        AllChem.MMFFOptimizeMolecule(mol)
+
+        # Try to generate 3D coordinates with error handling
+        conf_id = AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+        if conf_id < 0:
+            # If embedding fails, try with randomCoords
+            AllChem.EmbedMolecule(mol, AllChem.ETKDGv2())
+
+        # Validate that coordinates are valid (not NaN)
+        conf = mol.GetConformer()
+        for atom_idx in range(mol.GetNumAtoms()):
+            pos = conf.GetAtomPosition(atom_idx)
+            if pos.x != pos.x or pos.y != pos.y or pos.z != pos.z:  # NaN check
+                raise ValueError(f"NaN coordinates in molecule {smiles}")
+
+        # Try optimization, but don't fail if it doesn't converge
+        try:
+            AllChem.MMFFOptimizeMolecule(mol)
+        except Exception:
+            pass  # Continue even if optimization fails
 
         with tempfile.TemporaryDirectory() as tmpdir:
             sdf_path = os.path.join(tmpdir, "ligand.sdf")
@@ -100,11 +135,16 @@ class DockingAgent:
             writer.write(mol)
             writer.close()
 
-            subprocess.run(
+            result = subprocess.run(
                 ["obabel", sdf_path, "-O", pdbqt_path, "--gen3d"],
-                check=True,
+                capture_output=True,
+                text=True,
                 timeout=30,
             )
+
+            if result.returncode != 0:
+                raise RuntimeError(f"obabel conversion failed: {result.stderr}")
+
             cmd = [
                 mode,
                 "--receptor",

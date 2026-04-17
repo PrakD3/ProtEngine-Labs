@@ -2,6 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from utils.db import init_db
+import warnings
+
+# Suppress optional dependency warnings
+warnings.filterwarnings("ignore", message=".*PyTorch.*")
+warnings.filterwarnings("ignore", message=".*TensorFlow.*")
+warnings.filterwarnings("ignore", message=".*JAX.*")
+warnings.filterwarnings("ignore", message=".*requires PyTorch.*")
+warnings.filterwarnings("ignore", message=".*normalization.*")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

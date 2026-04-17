@@ -9,7 +9,7 @@ const SERVICES = [
   { key: "together", label: "Together AI", url: "https://api.together.xyz/" },
   { key: "ncbi", label: "NCBI / PubMed", url: "https://www.ncbi.nlm.nih.gov/account/" },
   { key: "langsmith", label: "LangSmith", url: "https://smith.langchain.com/" },
-  { key: "neon", label: "Neon DB", url: "https://neon.tech/" },
+  { key: "database", label: "Neon DB", url: "https://neon.tech/" },
 ];
 
 export function APIKeyChecker() {
@@ -18,7 +18,7 @@ export function APIKeyChecker() {
 
   useEffect(() => {
     getSystemStatus().then((s) => {
-      setStatus(s);
+      setStatus(s?.api_keys || {});
       setLoading(false);
     });
   }, []);

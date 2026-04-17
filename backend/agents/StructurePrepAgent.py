@@ -24,7 +24,8 @@ class StructurePrepAgent:
             return {"errors": [f"StructurePrepAgent failed: {exc}"]}
 
     async def _execute(self, state: dict) -> dict:
-        if not (state.get("analysis_plan") or {}).get("run_structure", True):
+        plan = state.get("analysis_plan")
+        if not getattr(plan, "run_structure", True):
             return {}
         structures = state.get("structures", [])
         session_id = state.get("session_id", "default")

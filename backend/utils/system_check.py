@@ -3,6 +3,13 @@
 import shutil
 import subprocess
 import sys
+import warnings
+
+# Suppress optional dependency warnings from deepchem
+warnings.filterwarnings("ignore", message=".*PyTorch.*")
+warnings.filterwarnings("ignore", message=".*TensorFlow.*")
+warnings.filterwarnings("ignore", message=".*JAX.*")
+warnings.filterwarnings("ignore", message=".*normalization.*")
 
 from utils.logger import get_logger
 

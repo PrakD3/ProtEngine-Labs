@@ -26,7 +26,8 @@ class PocketDetectionAgent:
             return {"errors": [f"PocketDetectionAgent failed: {exc}"]}
 
     async def _execute(self, state: dict) -> dict:
-        if not (state.get("analysis_plan") or {}).get("run_pocket_detection", True):
+        plan = state.get("analysis_plan")
+        if not getattr(plan, "run_pocket_detection", True):
             return {}
         structures = state.get("structures", [])
         pdb_content = state.get("pdb_content", "")

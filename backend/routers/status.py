@@ -22,5 +22,6 @@ async def system_status():
         "ncbi": bool(__import__("os").getenv("NCBI_API_KEY")),
         "langsmith": bool(__import__("os").getenv("LANGCHAIN_API_KEY")),
         "database": bool(__import__("os").getenv("DATABASE_URL")),
+        "neon": bool(__import__("os").getenv("DATABASE_URL")),  # Alias for database
     }
     return {"system": status, "api_keys": api_keys}

@@ -112,16 +112,23 @@ class MoleculeGenerationAgent:
                 continue
             try:
                 scaffold = MurckoScaffold.GetScaffoldForMol(mol)
-                scaffold_smi = Chem.MolToSmiles(scaffold)
-                for sub in substituents[:6]:
-                    try:
-                        new_smi = scaffold_smi + sub if scaffold_smi else smi
-                        validated = self._validate(new_smi, Chem, Descriptors, rdMolDescriptors)
-                        if validated:
-                            validated["generation_method"] = "murcko_scaffold"
-                            results.append(validated)
-                    except Exception:
-                        continue
+                for atom in scaffold.GetAtoms():
+                    if atom.GetDegree() < 3:  # Can add substituent to atoms with free valence
+                        for sub in substituents[:6]:
+                            try:
+                                sub_mol = Chem.MolFromSmiles(sub)
+                                if not sub_mol:
+                                    continue
+                                new_mol = Chem.RWMol(scaffold)
+                                new_atom_idx = new_mol.AddAtom(Chem.Atom(sub_mol.GetAtomWithIdx(0).GetAtomicNum()))
+                                new_mol.AddBond(atom.GetIdx(), new_atom_idx, Chem.BondType.SINGLE)
+                                new_smi = Chem.MolToSmiles(new_mol)
+                                validated = self._validate(new_smi, Chem, Descriptors, rdMolDescriptors)
+                                if validated:
+                                    validated["generation_method"] = "murcko_scaffold"
+                                    results.append(validated)
+                            except Exception:
+                                continue
             except Exception:
                 continue
         return results
