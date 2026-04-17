@@ -4,6 +4,7 @@ import asyncio
 
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
+import agents.OrchestratorAgent  # Import module, not variable
 
 router = APIRouter()
 
@@ -16,13 +17,13 @@ class AnalysisRequest(BaseModel):
 @router.post("/analyze")
 async def analyze(req: AnalysisRequest, background_tasks: BackgroundTasks):
     import uuid
-    from agents.OrchestratorAgent import _sessions
     from pipeline.graph import get_orchestrator
 
     session_id = str(uuid.uuid4())
     
     # Initialize session immediately so save endpoint doesn't get 404
-    _sessions[session_id] = {
+    # Access _sessions dynamically to handle module reloads
+    agents.OrchestratorAgent._sessions[session_id] = {
         "query": req.query,
         "session_id": session_id,
         "mode": req.mode,

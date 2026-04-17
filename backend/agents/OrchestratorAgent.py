@@ -53,6 +53,10 @@ class OrchestratorAgent:
 
     async def run_pipeline(self, query: str, session_id: str, mode: str = "full") -> dict:
         start = time.time()
+        
+        # Get existing session if it was pre-initialized, or create new one
+        existing_state = _sessions.get(session_id, {})
+        
         state: dict = {
             "query": query,
             "session_id": session_id,
@@ -64,6 +68,7 @@ class OrchestratorAgent:
             "langsmith_run_id": None,
             "execution_time_ms": 0,
             "llm_provider_used": "unknown",
+            **existing_state,  # Merge any pre-existing state
         }
 
         queue: asyncio.Queue = asyncio.Queue()
@@ -106,8 +111,14 @@ class OrchestratorAgent:
                 did = await save_discovery(state)
                 if did:
                     state["discovery_id"] = did
-            except Exception:
-                pass
+                else:
+                    from utils.logger import get_logger
+                    get_logger("orchestrator").warning(f"save_discovery returned empty for session {session_id}")
+            except Exception as e:
+                from utils.logger import get_logger
+                get_logger("orchestrator").error(f"AUTO_SAVE failed for session {session_id}: {e}")
+                import traceback
+                traceback.print_exc()
 
         _sessions[session_id] = state
         await queue.put(
