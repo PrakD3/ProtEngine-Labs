@@ -76,7 +76,8 @@ class VariantEffectAgent:
             is_resistant = len(entry.get("resistant_to", [])) > 0
             score = 0.85 if is_resistant else 0.65  # High score = pathogenic
             confidence = "PATHOGENIC" if is_resistant else "UNCERTAIN"
-            consequence = "gain_of_resistance" if is_resistant else "loss_of_function"
+            # Infer consequence from mutation string or mechanism
+            consequence = self._classify_consequence(mutation)
             return {
                 "score": score,
                 "confidence": confidence,
@@ -90,7 +91,7 @@ class VariantEffectAgent:
                 is_resistant = len(v.get("resistant_to", [])) > 0
                 score = 0.85 if is_resistant else 0.65
                 confidence = "PATHOGENIC" if is_resistant else "UNCERTAIN"
-                consequence = "gain_of_resistance" if is_resistant else "loss_of_function"
+                consequence = self._classify_consequence(mutation)
                 return {
                     "score": score,
                     "confidence": confidence,
