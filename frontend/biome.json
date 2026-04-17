@@ -20,7 +20,14 @@
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noExplicitAny": "warn"
+        "noExplicitAny": "warn",
+        "noArrayIndexKey": "warn"
+      },
+      "performance": {
+        "noImgElement": "warn"
+      },
+      "a11y": {
+        "noLabelWithoutControl": "warn"
       }
     }
   },

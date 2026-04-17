@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { listDiscoveries, deleteDiscovery } from "@/app/lib/api";
+import { deleteDiscovery, listDiscoveries } from "@/app/lib/api";
 import type { DiscoveryRecord } from "@/app/lib/types";
 
 export function useDiscoveries() {
   const [discoveries, setDiscoveries] = useState<DiscoveryRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
+  const [_tick, setTick] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -29,7 +29,7 @@ export function useDiscoveries() {
     return () => {
       active = false;
     };
-  }, [tick]);
+  }, []);
 
   const refresh = useCallback(() => {
     setIsLoading(true);

@@ -227,7 +227,13 @@ export interface PipelineState {
 }
 
 export interface AgentEvent {
-  event: "agent_start" | "agent_complete" | "agent_error" | "pipeline_start" | "pipeline_complete" | "heartbeat";
+  event:
+    | "agent_start"
+    | "agent_complete"
+    | "agent_error"
+    | "pipeline_start"
+    | "pipeline_complete"
+    | "heartbeat";
   agent?: string;
   progress?: number;
   data?: Partial<PipelineState>;

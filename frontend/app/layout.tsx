@@ -4,8 +4,7 @@ import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Drug Discovery AI",
-  description:
-    "Multi-agent precision medicine pipeline for novel drug discovery",
+  description: "Multi-agent precision medicine pipeline for novel drug discovery",
   keywords: ["drug discovery", "AI", "precision medicine", "molecular docking"],
 };
 

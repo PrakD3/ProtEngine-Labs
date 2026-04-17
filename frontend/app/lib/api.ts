@@ -1,6 +1,9 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export async function startAnalysis(query: string, mode: "full" | "lite" = "full"): Promise<{ session_id: string }> {
+export async function startAnalysis(
+  query: string,
+  mode: "full" | "lite" = "full"
+): Promise<{ session_id: string }> {
   const res = await fetch(`${API_URL}/api/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -16,7 +19,10 @@ export async function getSessionResult(sessionId: string): Promise<Record<string
   return res.json();
 }
 
-export async function exportSession(sessionId: string, format: "json" | "sdf" | "pdf"): Promise<Blob> {
+export async function exportSession(
+  sessionId: string,
+  format: "json" | "sdf" | "pdf"
+): Promise<Blob> {
   const res = await fetch(`${API_URL}/api/export/${sessionId}?format=${format}`);
   if (!res.ok) throw new Error(`Export failed: ${res.statusText}`);
   return res.blob();
@@ -62,7 +68,10 @@ export async function listThemes(): Promise<Record<string, unknown>[]> {
   }
 }
 
-export async function saveTheme(name: string, theme_json: Record<string, unknown>): Promise<{ id: string }> {
+export async function saveTheme(
+  name: string,
+  theme_json: Record<string, unknown>
+): Promise<{ id: string }> {
   const res = await fetch(`${API_URL}/api/themes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

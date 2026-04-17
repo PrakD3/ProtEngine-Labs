@@ -25,10 +25,7 @@ export function useSessionHistory() {
 
   const addEntry = useCallback((sessionId: string, query: string) => {
     setHistory((prev) => {
-      const next = [{ sessionId, query, timestamp: Date.now() }, ...prev].slice(
-        0,
-        10,
-      );
+      const next = [{ sessionId, query, timestamp: Date.now() }, ...prev].slice(0, 10);
       localStorage.setItem(KEY, JSON.stringify(next));
       return next;
     });

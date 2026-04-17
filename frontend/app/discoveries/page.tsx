@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Dna, ExternalLink, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { useDiscoveries } from "@/app/hooks/useDiscoveries";
-import { formatDate, truncateSmiles, formatBindingEnergy } from "@/app/lib/utils";
-import { Trash2, ExternalLink, Search, Dna } from "lucide-react";
+import { formatBindingEnergy, formatDate, truncateSmiles } from "@/app/lib/utils";
 
 export default function DiscoveriesPage() {
   const { discoveries, isLoading, error, remove } = useDiscoveries();
@@ -28,9 +28,16 @@ export default function DiscoveriesPage() {
           <Dna className="w-6 h-6" style={{ color: "var(--primary)" }} />
           <span>Drug Discovery AI</span>
         </Link>
-        <nav className="flex items-center gap-4 text-sm" style={{ color: "var(--muted-foreground)" }}>
-          <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
-          <Link href="/settings" className="hover:text-foreground transition-colors">Settings</Link>
+        <nav
+          className="flex items-center gap-4 text-sm"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          <Link href="/" className="hover:text-foreground transition-colors">
+            Home
+          </Link>
+          <Link href="/settings" className="hover:text-foreground transition-colors">
+            Settings
+          </Link>
         </nav>
       </header>
 
@@ -113,17 +120,23 @@ export default function DiscoveriesPage() {
                     background: "var(--muted)",
                   }}
                 >
-                  {["Gene", "Mutation", "Top Lead (SMILES)", "Docking Score", "Selectivity", "Date", ""].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="text-left px-4 py-3 font-medium"
-                        style={{ color: "var(--muted-foreground)" }}
-                      >
-                        {h}
-                      </th>
-                    )
-                  )}
+                  {[
+                    "Gene",
+                    "Mutation",
+                    "Top Lead (SMILES)",
+                    "Docking Score",
+                    "Selectivity",
+                    "Date",
+                    "",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left px-4 py-3 font-medium"
+                      style={{ color: "var(--muted-foreground)" }}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -132,8 +145,7 @@ export default function DiscoveriesPage() {
                     key={d.id}
                     className="transition-colors hover:opacity-90"
                     style={{
-                      borderBottom:
-                        i < filtered.length - 1 ? "1px solid var(--border)" : undefined,
+                      borderBottom: i < filtered.length - 1 ? "1px solid var(--border)" : undefined,
                     }}
                   >
                     <td
@@ -170,10 +182,7 @@ export default function DiscoveriesPage() {
                         "—"
                       )}
                     </td>
-                    <td
-                      className="px-4 py-3 text-xs"
-                      style={{ color: "var(--muted-foreground)" }}
-                    >
+                    <td className="px-4 py-3 text-xs" style={{ color: "var(--muted-foreground)" }}>
                       {formatDate(d.created_at)}
                     </td>
                     <td className="px-4 py-3">
@@ -188,6 +197,7 @@ export default function DiscoveriesPage() {
                           />
                         </Link>
                         <button
+                          type="button"
                           onClick={() => remove(d.id)}
                           className="p-1 hover:opacity-70 transition-opacity"
                         >

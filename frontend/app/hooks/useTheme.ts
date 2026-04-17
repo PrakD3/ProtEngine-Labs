@@ -1,17 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  type ThemeTokens,
-  AMBER_MINIMAL,
-  applyTheme,
-  getSavedTheme,
-} from "@/app/lib/theme";
+import { AMBER_MINIMAL, applyTheme, getSavedTheme, type ThemeTokens } from "@/app/lib/theme";
 
 export function useTheme() {
-  const [theme, setTheme] = useState<ThemeTokens>(
-    () => getSavedTheme() ?? AMBER_MINIMAL,
-  );
+  const [theme, setTheme] = useState<ThemeTokens>(() => getSavedTheme() ?? AMBER_MINIMAL);
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
