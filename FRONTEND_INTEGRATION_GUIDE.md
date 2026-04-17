@@ -1,15 +1,39 @@
 # AXONENGINE v4.0 — Frontend Integration Guide
 
-## EXECUTIVE SUMMARY
+> **Status: Backend Ready** ✅ All 22 agents operational • PostgreSQL persisting • API live on port 8000
 
-The **backend is fully operational** and ready for frontend integration. All 22 agents execute successfully, the database (PostgreSQL Neon) persists discoveries correctly, and the API responds on `http://localhost:8000`.
+## 🎯 What You're Building
 
-This guide provides:
-1. **What the backend does** — Pipeline architecture
-2. **API endpoints** — Exact signatures and responses
-3. **Frontend responsibilities** — UI/UX flows you need to implement
-4. **Real data examples** — Sample requests/responses
-5. **Integration checklist** — Step-by-step implementation guide
+A **scientific drug discovery interface** that visualizes a real 22-agent AI pipeline in action. Users enter a protein mutation (e.g., `EGFR T790M`) and watch as the system:
+- Analyzes the mutation's structure and impact
+- Generates 50-100 novel drug candidates
+- Ranks them by binding affinity and safety
+- Plans synthesis routes for lab execution
+
+**Design Principles:**
+- **Professional + Minimal** — Healthcare/science requires clarity
+- **Real-time Transparency** — Show all 22 agents executing
+- **Data-Driven** — Every claim backed by computational scores
+- **No AI Slop** — Distinctive typography, thoughtful colors, no generic aesthetics
+
+---
+
+## 📋 This Guide Contains
+
+| Section | Purpose |
+|---------|---------|
+| **PART 1** | What the backend does (pipeline architecture) |
+| **PART 2** | API endpoints (10 endpoints with real examples) |
+| **PART 3** | Frontend pages you need to build (5 pages) |
+| **PART 4** | Integration checklist (7 phases) |
+| **PART 5** | Real API request/response examples |
+| **PART 6** | Database schema reference |
+| **PART 7** | Why Redis was removed |
+| **PART 8** | V4 compliance verification (14/14 ✅) |
+| **PART 9** | Quick start for local development |
+| **PART 10** | Common pitfalls & solutions |
+
+---
 
 ---
 
@@ -20,7 +44,9 @@ This guide provides:
 **Input:** A mutation string like `EGFR T790M` (gene + position + amino acid change)  
 **Output:** 3-5 ranked lead molecules with binding affinity, selectivity, ADMET predictions, synthesis routes, and clinical context
 
-**Pipeline Stages:**
+**Total Runtime:** 
+- ⚡ **90 seconds** (fast mode, no MD)
+- ⏱️ **6 hours** (full MD validation on GPU)
 
 | Stage | Agent(s) | What Happens | Output |
 |-------|----------|--------------|--------|
