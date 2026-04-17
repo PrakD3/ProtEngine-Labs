@@ -2,9 +2,59 @@
 
 import asyncio
 import hashlib
+import os
 import shutil
+import subprocess
+import tempfile
 
 from utils.logger import get_logger
+
+
+def _create_pdbqt_fallback(pdb_path: str, pdbqt_path: str) -> None:
+    """
+    Fallback PDBQT converter (proper format, no manual string manipulation).
+    Extracts ATOM/HETATM lines and appends charge field at correct position (cols 77-78).
+    Works on Windows & Linux/WSL.
+    """
+    with open(pdb_path, "r") as f:
+        pdb_lines = f.readlines()
+    
+    pdbqt_lines = []
+    for line in pdb_lines:
+        if line.startswith("ATOM") or line.startswith("HETATM"):
+            # PDB format = 80 chars; PDBQT needs charge at columns 77-78 (0-indexed: 76-77)
+            # Extract the ATOM/HETATM line up to column 76
+            if len(line) >= 76:
+                # Keep original line up to 76, add 2-char charge field, keep rest
+                pdbqt_line = line[:76] + " 0" + line[78:] if len(line) > 78 else line[:76] + " 0\n"
+            else:
+                # Line too short, just append charge
+                pdbqt_line = line.rstrip() + " 0\n"
+            pdbqt_lines.append(pdbqt_line)
+    
+    pdbqt_lines.append("END\n")
+    
+    with open(pdbqt_path, "w") as f:
+        f.writelines(pdbqt_lines)
+
+
+def _clean_pdbqt(pdbqt_path: str) -> None:
+    """
+    Remove obabel-generated meta records (ROOT, TORSDOF, REMARK, etc.) that Vina rejects.
+    Keep only ATOM, HETATM, and END lines.
+    """
+    with open(pdbqt_path, "r") as f:
+        lines = f.readlines()
+    
+    # Keep only ATOM, HETATM, and END records
+    clean_lines = [line for line in lines if line.startswith(("ATOM", "HETATM", "END"))]
+    
+    # Ensure END is present
+    if not any(line.startswith("END") for line in clean_lines):
+        clean_lines.append("END\n")
+    
+    with open(pdbqt_path, "w") as f:
+        f.writelines(clean_lines)
 
 
 class DockingAgent:
@@ -281,40 +331,32 @@ class DockingAgent:
             with open(receptor_pdb, "w") as f:
                 f.write(pdb_content)
             
-            # **CRITICAL FIX**: Extract ONLY ATOM/HETATM lines and convert to PDBQT manually
-            # Vina is strict - fails on CONECT, ROOT, and other meta records
-            pdb_atoms = []
-            for line in pdb_content.splitlines():
-                if line.startswith("ATOM") or line.startswith("HETATM"):
-                    pdb_atoms.append(line)
-            
-            if not pdb_atoms:
-                raise RuntimeError("No ATOM/HETATM records found in PDB")
-            
-            # Manually convert to PDBQT format (add charges/atom types for Vina compatibility)
+            # **CRITICAL FIX #3**: Use obabel to convert PDB → PDBQT (handles format correctly)
+            # obabel is installed on both Windows and WSL2, processes atom types + charges properly
             receptor_pdbqt = os.path.join(tmpdir, "receptor.pdbqt")
-            with open(receptor_pdbqt, "w") as f:
-                for atom_line in pdb_atoms:
-                    # PDB format: cols 77-78 = element symbol, col 81-82 = charge
-                    # If missing, add defaults
-                    if len(atom_line) >= 78:
-                        element = atom_line[76:78].strip()
-                    else:
-                        # Extract from atom name if possible
-                        atom_name = atom_line[12:16].strip()
-                        element = atom_name[0]  # First char is usually element
-                    
-                    # Write PDBQT-compatible line (PDBQT accepts ATOM/HETATM with charges)
-                    if len(atom_line) >= 66:
-                        # Add charge field if missing (col 79-80)
-                        pdbqt_line = atom_line[:66] + "  0.00" + atom_line[66:] if len(atom_line) > 66 else atom_line + "  0.00"
-                    else:
-                        pdbqt_line = atom_line + "  0.00"
-                    
-                    f.write(pdbqt_line + "\n")
+            
+            try:
+                # Call obabel with proper subprocess escaping (works on Windows & Linux/WSL)
+                result = subprocess.run(
+                    ["obabel", receptor_pdb, "-O", receptor_pdbqt, "-xp"],  # -xp: polar hydrogens only
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
                 
-                # Add PDBQT-specific footer
-                f.write("END\n")
+                if result.returncode == 0:
+                    # Clean obabel output: remove ROOT, TORSDOF, REMARK records
+                    _clean_pdbqt(receptor_pdbqt)
+                else:
+                    log_warn = get_logger(self.__class__.__name__)
+                    log_warn.warning(f"obabel PDBQT conversion: {result.stderr}")
+                    # Fallback: use basic PDBQT with proper charge format
+                    _create_pdbqt_fallback(receptor_pdb, receptor_pdbqt)
+                
+            except (FileNotFoundError, TimeoutError) as e:
+                log_err = get_logger(self.__class__.__name__)
+                log_err.warning(f"obabel not available ({e}), using fallback PDBQT")
+                _create_pdbqt_fallback(receptor_pdb, receptor_pdbqt)
             
             # Use full path to vina/gnina executable
             exe_name = mode
@@ -357,13 +399,17 @@ class DockingAgent:
             # Log errors for debugging
             if result.returncode != 0:
                 log.error(f"Vina error: returncode={result.returncode}, stderr={result.stderr[:200]}")
+                # CRITICAL: Raise exception to trigger fallback
+                raise RuntimeError(f"Vina execution failed: {result.stderr[:100]}")
             
             for line in result.stdout.splitlines():
                 if "REMARK VINA RESULT:" in line:
                     parts = line.split()
                     if len(parts) >= 4:
                         return float(parts[3])
-        raise RuntimeError("Vina parse failed")
+            
+            # If no result found, raise exception to trigger fallback
+            raise RuntimeError("Vina parse failed - no REMARK VINA RESULT found")
 
     async def _vina_dock_to_receptor(self, smiles: str, pocket: dict, receptor_pdbqt: str, mode: str) -> float:
         """Dock molecule to a specific pre-prepared receptor PDBQT file."""
