@@ -15,7 +15,14 @@ export async function startAnalysis(
 
 export async function getSessionResult(sessionId: string): Promise<Record<string, unknown>> {
   const res = await fetch(`${API_URL}/api/molecules/${sessionId}`);
+  if (res.status === 404) return { status: "not_found" };
   if (!res.ok) throw new Error(`Session fetch failed: ${res.statusText}`);
+  return res.json();
+}
+
+export async function cancelAnalysis(sessionId: string): Promise<{ status: string }> {
+  const res = await fetch(`${API_URL}/api/cancel/${sessionId}`, { method: "POST" });
+  if (!res.ok) throw new Error(`Cancel failed: ${res.statusText}`);
   return res.json();
 }
 

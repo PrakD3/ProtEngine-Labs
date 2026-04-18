@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, ArrowLeft } from "lucide-react";
+import { AlertCircle, ArrowLeft, Loader2, Square } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useRef, useState } from "react";
 import { ADMETPanel } from "@/app/components/analysis/ADMETPanel";
@@ -24,11 +24,13 @@ import { SimilarityPanel } from "@/app/components/analysis/SimilarityPanel";
 import { SynthesisRoute } from "@/app/components/analysis/SynthesisRoute";
 import { ToxicophorePanel } from "@/app/components/analysis/ToxicophorePanel";
 import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
 import { Progress } from "@/app/components/ui/progress";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { useSSEStream } from "@/app/hooks/useSSEStream";
-import { getDockedPoseUrl, getSessionResult, getStructureUrl } from "@/app/lib/api";
+import { cancelAnalysis, getDockedPoseUrl, getSessionResult, getStructureUrl } from "@/app/lib/api";
+import { Matrix } from "@/components/unlumen-ui/matrix";
 import type {
   FinalReport,
   PipelineState,
@@ -43,10 +45,56 @@ interface PageProps {
 export default function AnalysisPage({ params }: PageProps) {
   const { sessionId } = use(params);
   const router = useRouter();
-  const { events, isComplete, error: streamError, latestState } = useSSEStream(sessionId);
+  const [isLocallyStopped, setIsLocallyStopped] = useState(false);
+  const { events, isComplete, error: streamError, latestState } = useSSEStream(
+    sessionId,
+    !isLocallyStopped
+  );
   const [result, setResult] = useState<PipelineState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isCancelled, setIsCancelled] = useState(false);
   const startTimeRef = useRef(Date.now());
+  const MATRIX_COLS = 30;
+  const MATRIX_ROWS = 7;
+  const [matrixLevels, setMatrixLevels] = useState<number[]>(
+    Array.from({ length: MATRIX_COLS }, () => 0.2)
+  );
+  const ACTIVE_ANALYSIS_KEY = "dda-active-analysis";
+  const STOPPED_ANALYSIS_KEY = "dda-stopped-analyses";
+
+  const readStoppedSessions = () => {
+    if (typeof window === "undefined") return [] as string[];
+    const stored = localStorage.getItem(STOPPED_ANALYSIS_KEY);
+    if (!stored) return [] as string[];
+    try {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [];
+    } catch {
+      return [] as string[];
+    }
+  };
+
+  const writeStoppedSessions = (sessions: string[]) => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(STOPPED_ANALYSIS_KEY, JSON.stringify(sessions));
+  };
+
+  const markStoppedSession = (session: string) => {
+    const sessions = readStoppedSessions();
+    if (!sessions.includes(session)) {
+      sessions.push(session);
+      writeStoppedSessions(sessions);
+    }
+  };
+
+  const unmarkStoppedSession = (session: string) => {
+    const sessions = readStoppedSessions();
+    const next = sessions.filter((id) => id !== session);
+    if (next.length !== sessions.length) {
+      writeStoppedSessions(next);
+    }
+  };
 
   const mergeAll = (prev: PipelineState | null, next: Partial<PipelineState>) => {
     return { ...(prev ?? {}), ...next } as PipelineState;
@@ -62,24 +110,210 @@ export default function AnalysisPage({ params }: PageProps) {
     return merged as PipelineState;
   };
 
-  // Determine progress from events
-  const completedAgents = events.filter((e) => e.event === "agent_complete").length;
-  const progress = Math.min(95, (completedAgents / 22) * 100);
-  const currentAgent = [...events].reverse().find((e) => e.event === "agent_start")?.agent;
+  const currentAgentFromEvents = [...events].reverse().find((e) => e.event === "agent_start")?.agent;
+  const currentAgentFromState = Object.entries(result?.agent_statuses ?? {}).find(
+    ([, status]) => status === "running"
+  )?.[0];
+  const currentAgent = currentAgentFromEvents ?? currentAgentFromState;
+  // Determine progress from events (fallback to stored statuses for refresh)
+  const completedAgentsFromEvents = events.filter((e) => e.event === "agent_complete").length;
+  const statusValues = Object.values(result?.agent_statuses ?? {});
+  const completedAgentsFromState = statusValues.filter((status) => status === "complete").length;
+  const completedAgents = completedAgentsFromEvents || completedAgentsFromState;
+  const runningBoost = currentAgent ? 0.5 : 0;
+  const progress = Math.min(95, ((completedAgents + runningBoost) / 22) * 100);
+  const currentAgentId = currentAgent?.endsWith("Agent")
+    ? currentAgent.slice(0, -5)
+    : currentAgent;
+
+  const agentMessages: Record<string, string> = {
+    MutationParser: "Parsing mutation and validating query context.",
+    Planner: "Building the execution plan for this run.",
+    Fetch: "Fetching literature, sequences, structures, and known compounds.",
+    StructurePrep: "Preparing protein structures (PDB/ESMFold).",
+    VariantEffect: "Scoring mutation effects for pathogenicity.",
+    PocketDetection: "Detecting binding pocket geometry with fpocket.",
+    MoleculeGeneration: "Generating candidate molecules for the pocket.",
+    Docking: "Docking candidates to estimate binding affinity.",
+    Selectivity: "Comparing target vs off-target binding.",
+    ADMET: "Filtering candidates by ADMET constraints.",
+    LeadOptimization: "Optimizing leads via local analog exploration.",
+    GNNAffinity: "Ranking candidates with GNN affinity scoring.",
+    MDValidation: "Validating top leads with molecular dynamics.",
+    Resistance: "Scanning potential resistance escape mutations.",
+    Similarity: "Searching for known analogs and similarity matches.",
+    Synergy: "Evaluating potential synergy partners.",
+    ClinicalTrial: "Matching clinical trials to the target profile.",
+    Synthesis: "Planning synthesis routes and cost estimates.",
+    Explainability: "Assembling reasoning trace and evidence summary.",
+    Report: "Compiling final ranked report.",
+  };
+
+  const hasFinal = Boolean(result?.final_report);
+  const isSessionComplete = isComplete || hasFinal;
+  const isStopped = isSessionComplete || isCancelled;
+  const statusMessage = isCancelled
+    ? "Analysis stopped."
+    : currentAgentId
+    ? agentMessages[currentAgentId] ?? `Running ${currentAgentId}...`
+    : "Initializing pipeline...";
+
+  useEffect(() => {
+    if (isStopped) return;
+    let rafId = 0;
+    let lastTick = 0;
+
+    const tick = (time: number) => {
+      if (time - lastTick > 120) {
+        lastTick = time;
+        const intensity = Math.min(1, 0.35 + (progress / 100) * 0.6);
+        setMatrixLevels((prev) =>
+          prev.map((_, idx) => {
+            const wave = Math.sin(time / 220 + idx * 0.6) * 0.18;
+            const jitter = Math.random() * 0.2;
+            const base = 0.12 + intensity * 0.55;
+            return Math.max(0.05, Math.min(1, base + wave + jitter));
+          })
+        );
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [isSessionComplete, isCancelled, progress]);
 
   useEffect(() => {
     if (!latestState) return;
     setResult((prev) => mergeAll(prev, latestState));
   }, [latestState]);
 
+  useEffect(() => {
+    if (
+      latestState?.cancelled ||
+      result?.cancelled ||
+      result?.status === "cancelled" ||
+      result?.status === "not_found"
+    ) {
+      setIsCancelled(true);
+      setIsLocallyStopped(true);
+      markStoppedSession(sessionId);
+    }
+  }, [latestState?.cancelled, result?.cancelled, result?.status, sessionId]);
+
+  useEffect(() => {
+    const stoppedSessions = readStoppedSessions();
+    if (stoppedSessions.includes(sessionId)) {
+      setIsCancelled(true);
+      setIsLocallyStopped(true);
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const applySnapshot = (data: Record<string, unknown>) => {
+      if (!isMounted) return;
+      setResult((prev) => mergeNonNull(prev, data as PipelineState));
+      const status = (data as { status?: string }).status;
+      const cancelled = Boolean((data as { cancelled?: boolean }).cancelled);
+      const hasFinalReport = Boolean((data as { final_report?: unknown }).final_report);
+      if (status === "not_found" || status === "cancelled" || cancelled) {
+        setIsCancelled(true);
+        setIsLocallyStopped(true);
+        markStoppedSession(sessionId);
+      } else if (hasFinalReport) {
+        unmarkStoppedSession(sessionId);
+      }
+    };
+
+    const refresh = async () => {
+      try {
+        const data = await getSessionResult(sessionId);
+        applySnapshot(data as Record<string, unknown>);
+      } catch {
+        // ignore polling errors
+      }
+    };
+
+    refresh();
+    const interval = window.setInterval(() => {
+      if (isLocallyStopped || isCancelled || isSessionComplete) return;
+      refresh();
+    }, 8000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(interval);
+    };
+  }, [sessionId, isLocallyStopped, isCancelled, isSessionComplete]);
+
   // Load final result when complete (fallback for refresh / missed SSE)
   useEffect(() => {
-    if (!isComplete) return;
-    if (latestState?.final_report) return;
+    if (!isSessionComplete) return;
+    if (latestState?.final_report || result?.final_report) return;
     getSessionResult(sessionId)
       .then((data) => setResult((prev) => mergeNonNull(prev, data as PipelineState)))
       .catch((e) => setLoadError(e.message));
-  }, [isComplete, latestState, sessionId]);
+  }, [isSessionComplete, latestState, sessionId, result?.final_report]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem(ACTIVE_ANALYSIS_KEY);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored) as { sessionId?: string; startedAt?: number };
+      if (parsed?.sessionId === sessionId && parsed?.startedAt) {
+        startTimeRef.current = parsed.startedAt;
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!sessionId) return;
+    if (isSessionComplete || isCancelled || isLocallyStopped) {
+      localStorage.removeItem(ACTIVE_ANALYSIS_KEY);
+      return;
+    }
+
+    const stored = localStorage.getItem(ACTIVE_ANALYSIS_KEY);
+    let startedAt = Date.now();
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as { startedAt?: number };
+        if (parsed?.startedAt) startedAt = parsed.startedAt;
+      } catch {
+        localStorage.removeItem(ACTIVE_ANALYSIS_KEY);
+      }
+    }
+
+    const query = typeof result?.query === "string" ? result?.query : latestState?.query;
+    localStorage.setItem(
+      ACTIVE_ANALYSIS_KEY,
+      JSON.stringify({ sessionId, query: typeof query === "string" ? query : undefined, startedAt })
+    );
+  }, [sessionId, result?.query, latestState?.query, isSessionComplete, isCancelled, isLocallyStopped]);
+
+  const handleCancel = async () => {
+    if (isCancelling || isSessionComplete || isCancelled) return;
+    setIsCancelling(true);
+    try {
+      const response = await cancelAnalysis(sessionId);
+      setIsCancelled(true);
+      setIsLocallyStopped(true);
+      markStoppedSession(sessionId);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(ACTIVE_ANALYSIS_KEY);
+      }
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Cancel failed");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   const report = result?.final_report as FinalReport | null;
   const selectivity = (result?.selectivity_results ?? []) as SelectivityResult[];
@@ -144,17 +378,17 @@ export default function AnalysisPage({ params }: PageProps) {
             <span className="text-xs font-mono text-[var(--muted-foreground)]">
               Session: {sessionId}
             </span>
-            {isComplete && result && (
+            {isSessionComplete && result && !isCancelled && (
               <SaveDiscoveryButton sessionId={sessionId} initialDiscoveryId={result.discovery_id} />
             )}
           </div>
         </div>
 
         {/* Error state */}
-        {(streamError || loadError) && (
+        {((streamError && !isLocallyStopped && !isCancelled) || loadError) && (
           <div className="mb-6 p-4 rounded-lg border border-[var(--destructive)]/30 bg-[var(--destructive)]/10 flex items-center gap-3">
             <AlertCircle size={16} className="text-[var(--destructive)] shrink-0" />
-            <span className="text-sm">{streamError || loadError}</span>
+            <span className="text-sm">{loadError || streamError}</span>
           </div>
         )}
 
@@ -172,8 +406,8 @@ export default function AnalysisPage({ params }: PageProps) {
         {/* Main layout: sidebar + content */}
         <div className="flex gap-6 items-start">
           {/* Left: pipeline status */}
-          <div className="hidden lg:block w-56 shrink-0 sticky top-20">
-            {!isComplete && (
+          <div className="hidden lg:block w-72 shrink-0 sticky top-20">
+            {!isSessionComplete && (
               <div className="mb-3">
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-[var(--muted-foreground)]">
@@ -186,16 +420,34 @@ export default function AnalysisPage({ params }: PageProps) {
             )}
             <PipelineStatus
               events={events}
-              isComplete={isComplete}
+              isComplete={isSessionComplete}
+              isCancelled={isCancelled}
+              agentStatuses={result?.agent_statuses}
               startTime={startTimeRef.current}
             />
+            {!isSessionComplete && !isCancelled && (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 w-full gap-2"
+                onClick={handleCancel}
+                disabled={isCancelling}
+              >
+                {isCancelling ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Square className="h-4 w-4" />
+                )}
+                Stop analysis
+              </Button>
+            )}
           </div>
 
           {/* Right: results */}
           <div className="flex-1 min-w-0">
             {/* Mobile progress */}
             <div className="lg:hidden mb-4">
-              {!isComplete && (
+              {!isSessionComplete && (
                 <>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-[var(--muted-foreground)]">
@@ -211,19 +463,36 @@ export default function AnalysisPage({ params }: PageProps) {
             </div>
 
             {/* Loading skeletons */}
-            {!isComplete && !result && (
-              <div className="space-y-4">
-                <Skeleton className="h-8 w-48" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <Skeleton key={i} className="h-48" />
-                  ))}
+            {!isSessionComplete && (
+              <div className="flex justify-center items-center min-h-[60vh]">
+                <div className="w-full max-w-xl p-6">
+                  <div className="flex justify-center py-6">
+                    <Matrix
+                      rows={MATRIX_ROWS}
+                      cols={MATRIX_COLS}
+                      mode="vu"
+                      levels={matrixLevels}
+                      fps={14}
+                      size={13}
+                      gap={4}
+                      palette={{
+                        on: "var(--primary)",
+                        off: "var(--border)",
+                      }}
+                      ariaLabel="analysis signal matrix"
+                      className="text-[var(--primary)]"
+                    />
+                  </div>
+
+                  <div className="text-sm text-[var(--muted-foreground)] text-center">
+                    {statusMessage}
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Results */}
-            {isComplete && result && report && (
+            {isSessionComplete && result && report && (
               <>
                 {/* Confidence Banner */}
                 {(result as any).confidence_banner && (
@@ -677,7 +946,7 @@ export default function AnalysisPage({ params }: PageProps) {
             )}
 
             {/* Stream complete but no report yet */}
-            {isComplete && !report && !loadError && (
+            {isSessionComplete && !report && !loadError && (
               <div className="text-sm text-[var(--muted-foreground)] p-6 text-center">
                 Loading results…
               </div>

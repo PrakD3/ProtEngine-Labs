@@ -25,6 +25,12 @@ export function PocketGeometryAnalysis({
   };
 
   const volumeTrend = getVolumeTrend(volumeDelta);
+  const hasDeltas = [
+    volumeDelta,
+    hydrophobicityDelta,
+    polarityDelta,
+    chargeDelta,
+  ].some((value) => value !== undefined);
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-4">
@@ -84,12 +90,21 @@ export function PocketGeometryAnalysis({
         )}
       </div>
 
-      <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-3">
-        <p className="text-xs text-blue-700 dark:text-blue-400">
-          💡 The mutation geometrically reshaped the binding pocket. Novel molecules were designed
-          to fit the new geometry rather than copy existing compounds.
-        </p>
-      </div>
+      {hasDeltas ? (
+        <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-3">
+          <p className="text-xs text-blue-700 dark:text-blue-400">
+            💡 The mutation geometrically reshaped the binding pocket. Novel molecules were designed
+            to fit the new geometry rather than copy existing compounds.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-[var(--destructive)]/40 bg-[var(--destructive)]/10 p-3">
+          <p className="text-xs text-[var(--destructive)]">
+            Pocket geometry deltas are unavailable. Ensure fpocket ran for both mutant and wildtype
+            structures.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

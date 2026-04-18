@@ -5,7 +5,7 @@ import type { AgentEvent, PipelineState } from "@/app/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export function useSSEStream(sessionId: string | null) {
+export function useSSEStream(sessionId: string | null, enabled = true) {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -13,13 +13,17 @@ export function useSSEStream(sessionId: string | null) {
   const esRef = useRef<EventSource | null>(null);
 
   const connect = useCallback(() => {
-    if (!sessionId) return;
+    if (!sessionId || !enabled) {
+      esRef.current?.close();
+      return;
+    }
     if (esRef.current) {
       esRef.current.close();
     }
 
     const es = new EventSource(`${API_URL}/api/stream/${sessionId}`);
     esRef.current = es;
+    setError(null);
 
     es.onmessage = (e) => {
       try {
@@ -28,7 +32,7 @@ export function useSSEStream(sessionId: string | null) {
         if (data.data && typeof data.data === "object") {
           setLatestState((prev) => ({ ...(prev ?? {}), ...data.data }));
         }
-        if (data.event === "pipeline_complete") {
+        if (data.event === "pipeline_complete" || data.event === "pipeline_cancelled") {
           setIsComplete(true);
           es.close();
         }
@@ -38,10 +42,12 @@ export function useSSEStream(sessionId: string | null) {
     };
 
     es.onerror = () => {
-      setError("Stream connection error");
+      if (enabled) {
+        setError("Stream connection error");
+      }
       es.close();
     };
-  }, [sessionId]);
+  }, [sessionId, enabled]);
 
   useEffect(() => {
     connect();

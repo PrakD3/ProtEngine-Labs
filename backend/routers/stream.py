@@ -12,9 +12,13 @@ router = APIRouter()
 @router.get("/stream/{session_id}")
 async def stream(session_id: str):
     from agents.OrchestratorAgent import _sse_queues
+    from agents.OrchestratorAgent import _sessions
 
     async def event_generator():
         queue = _sse_queues.get(session_id)
+        if not queue and session_id in _sessions:
+            queue = asyncio.Queue()
+            _sse_queues[session_id] = queue
         if not queue:
             yield f"data: {json.dumps({'event': 'error', 'message': 'Session not found'})}\n\n"
             return

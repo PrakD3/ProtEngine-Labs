@@ -31,33 +31,36 @@ class PocketDetectionAgent:
             return {}
         structures = state.get("structures", [])
         pdb_content = state.get("pdb_content", "")
+        mutant_pocket = None
+        wt_pocket = None
+        pocket_detection_method = None
+
+        mutant_pdb_path = self._get_mutant_pdb_path(structures)
+        wt_pdb_path = self._get_wt_pdb_path(state, structures)
 
         known = self._check_known_sites(structures)
         if known:
-            return {
-                "binding_pocket": {**known, "method": "known_site"},
-                "pocket_detection_method": "known_site",
-            }
+            pocket_detection_method = "known_site"
+            binding_pocket = {**known, "method": "known_site"}
+        else:
+            binding_pocket = None
 
-        if shutil.which("fpocket") and structures:
-            pdb_path = structures[0].get("pdb_path")
-            if pdb_path:
-                pocket = self._run_fpocket(pdb_path)
-                if pocket:
-                    return {
-                        "binding_pocket": {**pocket, "method": "fpocket"},
-                        "pocket_detection_method": "fpocket",
-                    }
+        if shutil.which("fpocket") and mutant_pdb_path:
+            mutant_pocket = self._run_fpocket(mutant_pdb_path)
+            if binding_pocket is None and mutant_pocket:
+                pocket_detection_method = "fpocket"
+                binding_pocket = {**mutant_pocket, "method": "fpocket"}
+            if wt_pdb_path:
+                wt_pocket = self._run_fpocket(wt_pdb_path)
 
-        if pdb_content:
+        if binding_pocket is None and pdb_content:
             centroid = self._centroid_fallback(pdb_content)
-            return {
-                "binding_pocket": {**centroid, "method": "centroid"},
-                "pocket_detection_method": "centroid",
-            }
+            pocket_detection_method = "centroid"
+            binding_pocket = {**centroid, "method": "centroid"}
 
-        return {
-            "binding_pocket": {
+        if binding_pocket is None:
+            pocket_detection_method = "default"
+            binding_pocket = {
                 "center_x": 0.0,
                 "center_y": 0.0,
                 "center_z": 0.0,
@@ -66,9 +69,36 @@ class PocketDetectionAgent:
                 "size_z": 20,
                 "score": 0.0,
                 "method": "default",
-            },
-            "pocket_detection_method": "default",
+            }
+
+        result = {
+            "binding_pocket": binding_pocket,
+            "pocket_detection_method": pocket_detection_method or "unknown",
         }
+
+        pocket_delta = self._build_pocket_delta(mutant_pocket, wt_pocket)
+        if pocket_delta:
+            result["pocket_delta"] = pocket_delta
+
+        return result
+
+    def _get_mutant_pdb_path(self, structures: list) -> str | None:
+        for struct in structures:
+            if struct.get("is_mutant") and struct.get("pdb_path"):
+                return struct.get("pdb_path")
+        for struct in structures:
+            if struct.get("pdb_path"):
+                return struct.get("pdb_path")
+        return None
+
+    def _get_wt_pdb_path(self, state: dict, structures: list) -> str | None:
+        wt_path = state.get("wt_pdb_path")
+        if wt_path:
+            return wt_path
+        for struct in structures:
+            if struct.get("is_wildtype") and struct.get("pdb_path"):
+                return struct.get("pdb_path")
+        return None
 
     def _check_known_sites(self, structures: list) -> dict | None:
         try:
@@ -94,6 +124,28 @@ class PocketDetectionAgent:
                 cy = re.search(r"y_barycenter\s*:\s*([\d\.\-]+)", pocket1)
                 cz = re.search(r"z_barycenter\s*:\s*([\d\.\-]+)", pocket1)
                 score = re.search(r"Druggability Score\s*:\s*([\d\.]+)", pocket1)
+                volume = self._parse_metric(pocket1, [r"Volume\s*:\s*([\d\.\-]+)"])
+                hydrophobicity = self._parse_metric(
+                    pocket1,
+                    [
+                        r"Hydrophobicity score\s*:\s*([\d\.\-]+)",
+                        r"Hydrophobicity\s*:\s*([\d\.\-]+)",
+                    ],
+                )
+                polarity = self._parse_metric(
+                    pocket1,
+                    [
+                        r"Polarity score\s*:\s*([\d\.\-]+)",
+                        r"Polarity\s*:\s*([\d\.\-]+)",
+                    ],
+                )
+                charge = self._parse_metric(
+                    pocket1,
+                    [
+                        r"Charge score\s*:\s*([\d\.\-]+)",
+                        r"Charge\s*:\s*([\d\.\-]+)",
+                    ],
+                )
                 if cx and cy and cz:
                     return {
                         "center_x": float(cx.group(1)),
@@ -103,10 +155,60 @@ class PocketDetectionAgent:
                         "size_y": 20,
                         "size_z": 20,
                         "score": float(score.group(1)) if score else 0.5,
+                        "volume": volume,
+                        "hydrophobicity_score": hydrophobicity,
+                        "polarity_score": polarity,
+                        "charge_score": charge,
                     }
         except Exception:
             pass
         return None
+
+    def _parse_metric(self, pocket_text: str, patterns: list[str]) -> float | None:
+        for pattern in patterns:
+            match = re.search(pattern, pocket_text, re.IGNORECASE)
+            if match:
+                try:
+                    return float(match.group(1))
+                except ValueError:
+                    return None
+        return None
+
+    def _build_pocket_delta(self, mutant: dict | None, wt: dict | None) -> dict | None:
+        if not mutant or not wt:
+            return None
+        delta: dict[str, float] = {}
+
+        def add_delta(key: str, out_key: str) -> None:
+            m_val = mutant.get(key)
+            w_val = wt.get(key)
+            if isinstance(m_val, (int, float)) and isinstance(w_val, (int, float)):
+                delta[out_key] = round(m_val - w_val, 2)
+
+        add_delta("volume", "volume_delta")
+        add_delta("hydrophobicity_score", "hydrophobicity_score_delta")
+        add_delta("polarity_score", "polarity_score_delta")
+        add_delta("charge_score", "charge_score_delta")
+
+        if not delta:
+            return None
+
+        reshaped = False
+        volume_delta = delta.get("volume_delta")
+        if volume_delta is not None and abs(volume_delta) >= 50:
+            reshaped = True
+        for key in (
+            "hydrophobicity_score_delta",
+            "polarity_score_delta",
+            "charge_score_delta",
+        ):
+            val = delta.get(key)
+            if val is not None and abs(val) >= 0.2:
+                reshaped = True
+                break
+
+        delta["pocket_reshaped"] = reshaped
+        return delta
 
     def _centroid_fallback(self, pdb_content: str) -> dict:
         xs, ys, zs = [], [], []

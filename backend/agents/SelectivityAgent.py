@@ -92,42 +92,67 @@ class SelectivityAgent:
         top_compounds = sorted(docking_results, key=lambda x: x.get("binding_energy", 0))[:30]
         results = []
         
+        off_target = self.OFF_TARGET_MAP.get(gene, self.OFF_TARGET_MAP["DEFAULT"])
+
         if has_dual_docking:
-            # Use WT vs mutant comparison
+            # Use WT vs mutant comparison (fallback to off-target if WT energy is invalid)
             for mol in top_compounds:
                 mut_aff = mol.get("binding_energy", -8.0)
                 wt_aff = mol.get("wt_binding_energy")
                 affinity_delta = mol.get("affinity_delta")
-                
-                if wt_aff is not None and affinity_delta is not None:
-                    # Calculate selectivity fold-change from ΔΔG
-                    # ΔΔG ≈ -1.36 kcal/mol = 10-fold difference at 298K
-                    fold_change = 10 ** (affinity_delta / 1.36) if affinity_delta != 0 else 1.0
-                    selectivity_score = abs(affinity_delta)
-                    
-                    results.append({
-                        "smiles": mol["smiles"],
-                        "mutant_affinity": mut_aff,
-                        "wildtype_affinity": wt_aff,
-                        "affinity_delta": affinity_delta,
-                        "fold_selectivity": round(fold_change, 2),
-                        "selectivity_score": round(selectivity_score, 2),
-                        "selective": affinity_delta < -0.68,  # 5-fold selectivity threshold
-                        "selectivity_label": (
-                            "High selective"
-                            if affinity_delta < -1.36  # 10-fold
-                            else "Selective"
-                            if affinity_delta < -0.68  # 5-fold
-                            else "Moderate"
-                            if affinity_delta < 0  # Mutant better
-                            else "Non-selective"
-                        ),
-                        "comparison_type": "wildtype",
-                    })
+
+                if wt_aff is None or affinity_delta is None or wt_aff >= 0:
+                    off_aff = await self._score_off_target(mol["smiles"], off_target)
+                    ratio = abs(mut_aff) / abs(off_aff) if off_aff != 0 else 1.0
+                    results.append(
+                        {
+                            "smiles": mol["smiles"],
+                            "target_affinity": mut_aff,
+                            "off_target_affinity": off_aff,
+                            "off_target_pdb": off_target["pdb_id"],
+                            "off_target_name": off_target["protein_name"],
+                            "selectivity_ratio": round(ratio, 3),
+                            "selective": ratio >= 2.0,
+                            "selectivity_label": (
+                                "High"
+                                if ratio >= 3.0
+                                else "Moderate"
+                                if ratio >= 2.0
+                                else "Low"
+                                if ratio >= 1.0
+                                else "Dangerous"
+                            ),
+                            "comparison_type": "off_target_fallback",
+                        }
+                    )
+                    continue
+
+                # Calculate selectivity fold-change from ΔΔG
+                # ΔΔG ≈ -1.36 kcal/mol = 10-fold difference at 298K
+                fold_change = 10 ** (-affinity_delta / 1.36) if affinity_delta != 0 else 1.0
+                selectivity_score = abs(affinity_delta)
+
+                results.append({
+                    "smiles": mol["smiles"],
+                    "mutant_affinity": mut_aff,
+                    "wildtype_affinity": wt_aff,
+                    "affinity_delta": affinity_delta,
+                    "fold_selectivity": round(fold_change, 2),
+                    "selectivity_score": round(selectivity_score, 2),
+                    "selective": affinity_delta < -0.68,  # 5-fold selectivity threshold
+                    "selectivity_label": (
+                        "High selective"
+                        if affinity_delta < -1.36  # 10-fold
+                        else "Selective"
+                        if affinity_delta < -0.68  # 5-fold
+                        else "Moderate"
+                        if affinity_delta < 0  # Mutant better
+                        else "Non-selective"
+                    ),
+                    "comparison_type": "wildtype",
+                })
         else:
             # Fall back to off-target comparison (previous behavior)
-            off_target = self.OFF_TARGET_MAP.get(gene, self.OFF_TARGET_MAP["DEFAULT"])
-            
             for mol in top_compounds:
                 target_aff = mol.get("binding_energy", -8.0)
                 off_aff = await self._score_off_target(mol["smiles"], off_target)

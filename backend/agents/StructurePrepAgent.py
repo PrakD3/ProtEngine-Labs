@@ -94,6 +94,20 @@ class StructurePrepAgent:
                 if seq:
                     pdb_content = await self._esm_fold(seq)
                     if pdb_content:
+                        if not updated_structures:
+                            esm_path = tmp_dir / "mutant_esmf.pdb"
+                            if not esm_path.exists():
+                                esm_path.write_text(pdb_content)
+                            updated_structures = [
+                                {
+                                    "pdb_id": "ESMFOLD",
+                                    "title": "ESMFold model",
+                                    "experimental_methods": "predicted",
+                                    "resolution": None,
+                                    "pdb_path": str(esm_path),
+                                    "is_mutant": True,
+                                }
+                            ]
                         # ESMFold returns PDB with B-factors as pLDDT
                         mutation_pos = mutation_context.get("position")
                         if mutation_pos:
@@ -130,6 +144,10 @@ class StructurePrepAgent:
                 wt_seq = seq  # In real scenario, would reverse the mutation
                 if seq:
                     wt_pdb_content = await self._esm_fold(wt_seq)
+                    if wt_pdb_content and not wt_local_path:
+                        wt_local_path = tmp_dir / "WT_esmf.pdb"
+                        if not wt_local_path.exists():
+                            wt_local_path.write_text(wt_pdb_content)
 
         result = {
             "pdb_content": pdb_content or "",
@@ -140,6 +158,8 @@ class StructurePrepAgent:
         if wt_pdb_content:
             result["wt_pdb_content"] = wt_pdb_content
             result["has_wt"] = True
+            if wt_local_path:
+                result["wt_pdb_path"] = str(wt_local_path)
         else:
             result["has_wt"] = False
         

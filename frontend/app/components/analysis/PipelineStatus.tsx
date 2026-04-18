@@ -1,6 +1,6 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, CheckCircle, Circle, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle, Circle, CircleDashed, Loader2 } from "lucide-react";
 import type { AgentEvent } from "@/app/lib/types";
 
 const AGENTS = [
@@ -33,11 +33,13 @@ const AGENTS = [
   { id: "Report", label: "Report" },
 ];
 
-type AgentStatus = "running" | "complete" | "error" | "waiting";
+type AgentStatus = "running" | "complete" | "error" | "waiting" | "skipped";
 
 interface Props {
   events: AgentEvent[];
   isComplete: boolean;
+  isCancelled?: boolean;
+  agentStatuses?: Record<string, string>;
   startTime?: number;
 }
 
@@ -46,8 +48,22 @@ function normalizeAgentName(name: string): string {
   return name.endsWith("Agent") ? name.slice(0, -5) : name;
 }
 
-export function PipelineStatus({ events, isComplete, startTime }: Props) {
+function mapAgentStatus(status: string): AgentStatus {
+  if (status === "running") return "running";
+  if (status === "complete") return "complete";
+  if (status === "failed") return "error";
+  if (status === "skipped") return "skipped";
+  return "waiting";
+}
+
+export function PipelineStatus({ events, isComplete, isCancelled, agentStatuses, startTime }: Props) {
   const statusMap: Record<string, AgentStatus> = {};
+  if (agentStatuses) {
+    for (const [name, status] of Object.entries(agentStatuses)) {
+      const key = normalizeAgentName(name);
+      statusMap[key] = mapAgentStatus(status);
+    }
+  }
   for (const e of events) {
     if (e.agent) {
       const key = normalizeAgentName(e.agent);
@@ -60,13 +76,16 @@ export function PipelineStatus({ events, isComplete, startTime }: Props) {
   const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
 
   return (
-    <div className="space-y-1 p-4 rounded-xl border border-[var(--border)] bg-[var(--card)]">
+    <div className="space-y-1 p-4 min-h-[620px] rounded-xl border border-[var(--border)] bg-[var(--card)]">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">Pipeline Progress</h3>
         {!isComplete && startTime && (
           <span className="text-xs text-[var(--muted-foreground)]">{elapsed}s</span>
         )}
-        {isComplete && <span className="text-xs text-emerald-600 font-medium">✓ Complete</span>}
+        {isCancelled && <span className="text-xs text-amber-600 font-medium">Stopped</span>}
+        {!isCancelled && isComplete && (
+          <span className="text-xs text-emerald-600 font-medium">✓ Complete</span>
+        )}
       </div>
       <AnimatePresence>
         {AGENTS.map((agent) => {
@@ -88,6 +107,9 @@ export function PipelineStatus({ events, isComplete, startTime }: Props) {
               )}
               {status === "error" && (
                 <AlertCircle size={12} className="text-[var(--destructive)] shrink-0" />
+              )}
+              {status === "skipped" && (
+                <CircleDashed size={12} className="text-[var(--muted-foreground)] shrink-0" />
               )}
               {status === "waiting" && (
                 <Circle size={12} className="text-[var(--muted-foreground)] shrink-0" />

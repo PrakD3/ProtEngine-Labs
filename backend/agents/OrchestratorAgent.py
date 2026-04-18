@@ -76,33 +76,54 @@ class OrchestratorAgent:
         start = time.time()
         
         # Get existing session if it was pre-initialized, or create new one
-        existing_state = _sessions.get(session_id, {})
-        
-        state: dict = {
-            "query": query,
-            "session_id": session_id,
-            "mode": PipelineMode.FULL if mode == "full" else PipelineMode.LITE,
-            "agent_statuses": {},
-            "errors": [],
-            "warnings": [],
-            "confidence_scores": {},
-            "langsmith_run_id": None,
-            "execution_time_ms": 0,
-            "llm_provider_used": "unknown",
-            **existing_state,  # Merge any pre-existing state
-        }
+        state = _sessions.get(session_id)
+        if state is None:
+            state = {}
 
-        queue: asyncio.Queue = asyncio.Queue()
-        _sse_queues[session_id] = queue
+        state["query"] = query
+        state["session_id"] = session_id
+        state["mode"] = PipelineMode.FULL if mode == "full" else PipelineMode.LITE
+        state.setdefault("agent_statuses", {})
+        state.setdefault("errors", [])
+        state.setdefault("warnings", [])
+        state.setdefault("confidence_scores", {})
+        state.setdefault("langsmith_run_id", None)
+        state.setdefault("execution_time_ms", 0)
+        state.setdefault("llm_provider_used", "unknown")
+        state.setdefault("cancelled", False)
+
+        _sessions[session_id] = state
+
+        queue = _sse_queues.get(session_id)
+        if queue is None:
+            queue = asyncio.Queue()
+            _sse_queues[session_id] = queue
 
         agent_names = [a[0] for a in AGENT_ORDER]
         for name in agent_names:
-            state["agent_statuses"][name] = AgentStatus.PENDING
+            state["agent_statuses"].setdefault(name, AgentStatus.PENDING)
 
         await queue.put({"event": "pipeline_start", "session_id": session_id, "query": query})
 
         for agent_name, progress in AGENT_ORDER:
+            if state.get("cancelled"):
+                for pending_name in agent_names:
+                    if state["agent_statuses"].get(pending_name) == AgentStatus.PENDING:
+                        state["agent_statuses"][pending_name] = AgentStatus.SKIPPED
+                _sessions[session_id] = state
+                await queue.put(
+                    {
+                        "event": "pipeline_cancelled",
+                        "data": {
+                            "cancelled": True,
+                            "status": "cancelled",
+                            "agent_statuses": state.get("agent_statuses", {}),
+                        },
+                    }
+                )
+                break
             state["agent_statuses"][agent_name] = AgentStatus.RUNNING
+            _sessions[session_id] = state
             await queue.put({"event": "agent_start", "agent": agent_name, "progress": progress - 5})
 
             try:
@@ -110,6 +131,7 @@ class OrchestratorAgent:
                 result = await agent.run(state)
                 state.update(result)
                 state["agent_statuses"][agent_name] = AgentStatus.COMPLETE
+                _sessions[session_id] = state
                 await queue.put(
                     {
                         "event": "agent_complete",
@@ -121,9 +143,14 @@ class OrchestratorAgent:
             except Exception as exc:
                 state["agent_statuses"][agent_name] = AgentStatus.FAILED
                 state.setdefault("errors", []).append(f"{agent_name}: {exc}")
+                _sessions[session_id] = state
                 await queue.put({"event": "agent_error", "agent": agent_name, "error": str(exc)})
 
         state["execution_time_ms"] = int((time.time() - start) * 1000)
+        if state.get("cancelled"):
+            state["status"] = "cancelled"
+        else:
+            state["status"] = "complete"
 
         if os.getenv("AUTO_SAVE_DISCOVERIES", "").lower() == "true":
             try:

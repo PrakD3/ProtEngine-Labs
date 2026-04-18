@@ -157,6 +157,14 @@ export interface BindingPocket {
   method?: string;
 }
 
+export interface PocketDelta {
+  volume_delta?: number;
+  hydrophobicity_score_delta?: number;
+  polarity_score_delta?: number;
+  charge_score_delta?: number;
+  pocket_reshaped?: boolean;
+}
+
 export interface EvolutionNode {
   id: string;
   smiles: string;
@@ -261,6 +269,8 @@ export interface PipelineState {
   query: string;
   session_id: string;
   mode: "full" | "lite";
+  status?: string | null;
+  cancelled?: boolean;
   mutation_context: MutationContext | null;
   analysis_plan: AnalysisPlan | null;
   literature: LiteratureItem[];
@@ -268,6 +278,7 @@ export interface PipelineState {
   structures: StructureItem[];
   binding_pocket?: BindingPocket | null;
   pocket_detection_method?: string | null;
+  pocket_delta?: PocketDelta | null;
   known_compounds: KnownCompound[];
   docking_results: DockingResult[];
   selectivity_results: SelectivityResult[];
@@ -300,6 +311,7 @@ export interface AgentEvent {
     | "agent_complete"
     | "agent_error"
     | "pipeline_start"
+    | "pipeline_cancelled"
     | "pipeline_complete"
     | "heartbeat";
   agent?: string;
