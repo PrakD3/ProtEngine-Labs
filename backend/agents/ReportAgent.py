@@ -131,6 +131,7 @@ class ReportAgent:
                 "langsmith_run_id": state.get("langsmith_run_id"),
                 "execution_time_ms": state.get("execution_time_ms", 0),
             },
+            "knowledge_graph": state.get("knowledge_graph"),
             "export_ready": True,
         }
 

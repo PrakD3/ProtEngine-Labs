@@ -9,11 +9,11 @@ interface Props {
 export function MoleculeViewer2D({ molImageB64, smiles, className }: Props) {
   if (molImageB64) {
     return (
-      <div className={className}>
+      <div className={`${className} overflow-hidden flex items-center justify-center`}>
         <img
           src={`data:image/png;base64,${molImageB64}`}
           alt={smiles}
-          className="w-full h-auto rounded"
+          className="h-full w-auto object-contain rounded"
         />
       </div>
     );

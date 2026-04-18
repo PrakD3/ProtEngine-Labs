@@ -20,10 +20,14 @@ async def get_docked_pose(session_id: str, pose_id: str):
         pose_map = state.get("docked_pose_map", {})
         pose_path = pose_map.get(pose_id)
 
+    from utils.db import get_session_by_session_id
+    from fastapi import Response
+
+    path = None
     if pose_path:
         path = Path(pose_path)
     else:
-        # Fallback to filesystem for sessions that were evicted/reloaded.
+        # Fallback to filesystem
         base = docked_root / session_id
         candidate_pdb = base / f"{pose_id}.pdb"
         candidate_pdbqt = base / f"{pose_id}.pdbqt"
@@ -31,17 +35,19 @@ async def get_docked_pose(session_id: str, pose_id: str):
             path = candidate_pdb
         elif candidate_pdbqt.exists():
             path = candidate_pdbqt
-        else:
-            raise HTTPException(status_code=404, detail="Docked pose not found")
 
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="Docked pose file missing")
+    if path and path.exists():
+        media_type = "chemical/x-pdb" if path.suffix.lower() == ".pdb" else "chemical/x-pdbqt"
+        return FileResponse(path, media_type=media_type, filename=path.name)
 
-    try:
-        if docked_root.exists() and not str(path.resolve()).startswith(str(docked_root)):
-            raise HTTPException(status_code=400, detail="Invalid pose path")
-    except Exception:
-        pass
+    # 3. Fallback to Database content
+    db_state = await get_session_by_session_id(session_id)
+    if db_state:
+        results = db_state.get("docking_results", [])
+        for r in results:
+            if r.get("pose_id") == pose_id:
+                content = r.get("pose_content")
+                if content:
+                    return Response(content, media_type="chemical/x-pdb")
 
-    media_type = "chemical/x-pdb" if path.suffix.lower() == ".pdb" else "chemical/x-pdbqt"
-    return FileResponse(path, media_type=media_type, filename=path.name)
+    raise HTTPException(status_code=404, detail="Docked pose not found in FS or DB")

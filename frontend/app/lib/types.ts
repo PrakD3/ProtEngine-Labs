@@ -64,6 +64,7 @@ export interface DockingResult {
   method: string;
   pose_id?: string | null;
   pose_format?: string | null;
+  mol_image_b64?: string;
 }
 
 export interface SelectivityResult {

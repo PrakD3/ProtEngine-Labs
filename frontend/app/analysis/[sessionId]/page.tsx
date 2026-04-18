@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertCircle, ArrowLeft, Loader2, Square } from "lucide-react";
+import { AlertCircle, ArrowLeft, Loader2, Search, Square } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import { ADMETPanel } from "@/app/components/analysis/ADMETPanel";
 import { ClinicalTrialPanel } from "@/app/components/analysis/ClinicalTrialPanel";
 import { ConfidenceBanner } from "@/app/components/analysis/ConfidenceBanner";
@@ -25,8 +25,16 @@ import { SynthesisRoute } from "@/app/components/analysis/SynthesisRoute";
 import { ToxicophorePanel } from "@/app/components/analysis/ToxicophorePanel";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
 import { Progress } from "@/app/components/ui/progress";
 import { Skeleton } from "@/app/components/ui/skeleton";
+import { Switch } from "@/app/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { useSSEStream } from "@/app/hooks/useSSEStream";
 import { cancelAnalysis, getDockedPoseUrl, getSessionResult, getStructureUrl } from "@/app/lib/api";
@@ -47,6 +55,8 @@ export default function AnalysisPage({ params }: PageProps) {
   const { sessionId } = use(params);
   const router = useRouter();
   const [isLocallyStopped, setIsLocallyStopped] = useState(false);
+  const [isDockingModalOpen, setIsDockingModalOpen] = useState(false);
+  const [isDockingModal3D, setIsDockingModal3D] = useState(true);
   const { events, isComplete, error: streamError, latestState } = useSSEStream(
     sessionId,
     !isLocallyStopped
@@ -993,13 +1003,72 @@ export default function AnalysisPage({ params }: PageProps) {
                           <h3 className="font-semibold text-sm mb-3">
                             Docked Pose (Top-ranked)
                           </h3>
-                          <MoleculeViewer3D
-                            pdbId={normalizePdbId(topDock.structure) || primaryPdbId}
-                            proteinUrl={proteinUrl}
-                            ligandPoseUrl={topDockPoseUrl}
-                            ligandPoseFormat={topDock.pose_format}
-                            className="h-64 rounded-lg"
-                          />
+                          <div className="relative group">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsDockingModal3D(true);
+                                setIsDockingModalOpen(true);
+                              }}
+                              className="w-full text-left cursor-zoom-in"
+                              title="Open interactive docking viewer"
+                            >
+                              <MoleculeViewer3D
+                                pdbId={normalizePdbId(topDock.structure) || primaryPdbId}
+                                proteinUrl={proteinUrl}
+                                ligandPoseUrl={topDockPoseUrl}
+                                ligandPoseFormat={topDock.pose_format}
+                                className="h-64 rounded-lg"
+                              />
+                              <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium bg-black/65 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Search size={12} />
+                                Expand
+                              </span>
+                            </button>
+                          </div>
+                          
+                          <Dialog
+                            open={isDockingModalOpen}
+                            onOpenChange={setIsDockingModalOpen}
+                          >
+                            <DialogContent className="w-[95vw] max-w-6xl max-h-[92vh] p-5">
+                              <DialogClose onClose={() => setIsDockingModalOpen(false)} />
+                              <DialogHeader className="mb-3">
+                                <DialogTitle>
+                                  {topDock.compound_name} · Docking Visualization
+                                </DialogTitle>
+                                <div className="flex items-center gap-2">
+                                  <Switch checked={isDockingModal3D} onCheckedChange={setIsDockingModal3D} />
+                                  <span className="text-xs text-[var(--muted-foreground)]">
+                                    {isDockingModal3D ? "3D Viewer" : "2D Viewer"}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-[var(--muted-foreground)]">
+                                  {isDockingModal3D
+                                    ? "Mouse controls: drag to rotate, right-drag to pan, and scroll to zoom."
+                                    : "Structure overview."}
+                                </p>
+                              </DialogHeader>
+
+                              {isDockingModal3D ? (
+                                <MoleculeViewer3D
+                                  pdbId={normalizePdbId(topDock.structure) || primaryPdbId}
+                                  proteinUrl={proteinUrl}
+                                  ligandPoseUrl={topDockPoseUrl}
+                                  ligandPoseFormat={topDock.pose_format}
+                                  className="h-[72vh] rounded-xl"
+                                />
+                              ) : (
+                                <div className="h-[72vh] rounded-xl border border-[var(--border)] bg-[var(--muted)]/20 flex items-center justify-center p-8">
+                                  <img 
+                                    src={`data:image/png;base64,${topDock.mol_image_b64}`} 
+                                    alt={topDock.smiles} 
+                                    className="max-h-full max-w-full object-contain shadow-2xl rounded-lg"
+                                  />
+                                </div>
+                              )}
+                            </DialogContent>
+                          </Dialog>
                           <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">
                             {topDockPoseUrl
                               ? "Docked ligand pose loaded from Vina output."

@@ -55,6 +55,7 @@ AGENT_ORDER = [
     
     # Stage 10: Output
     ("SynthesisAgent", 98),
+    ("KnowledgeGraphAgent", 98.5),
     ("ExplainabilityAgent", 99),
     ("ReportAgent", 100),
 ]

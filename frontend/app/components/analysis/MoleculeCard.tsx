@@ -178,10 +178,10 @@ export function MoleculeCard({
         )}
       </AnimatePresence>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 pt-1 border-t border-[var(--border)]/30">
         <Switch checked={show3D} onCheckedChange={setShow3D} />
-        <span className="text-xs text-[var(--muted-foreground)]">
-          {show3D ? "3D Protein" : "2D Molecule"}
+        <span className="text-xs font-medium text-[var(--muted-foreground)]">
+          {show3D ? "3D Projection" : "2D Molecule"}
         </span>
       </div>
       {show3D && (
