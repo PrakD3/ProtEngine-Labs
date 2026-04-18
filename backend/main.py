@@ -30,8 +30,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Drug Discovery AI", version="3.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://*.vercel.app"],
-    allow_methods=["*"], allow_headers=["*"], allow_credentials=True)
+    allow_origins=["*"],  # Allow all origins for development/testing
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=False)  # Must be False when allow_origins="*"
 
 from routers import (
     analysis,
