@@ -1,11 +1,13 @@
 "use client";
 
 interface Props {
-  similarMolecules?: string[];
+  similarMolecules?: string[] | null;
 }
 
-export function SimilarityPanel({ similarMolecules = [] }: Props) {
-  if (!similarMolecules.length) {
+export function SimilarityPanel({ similarMolecules }: Props) {
+  const safeMolecules = similarMolecules ?? [];
+
+  if (!safeMolecules.length) {
     return (
       <div className="text-sm text-[var(--muted-foreground)] p-4">No similar molecules found.</div>
     );
@@ -16,7 +18,7 @@ export function SimilarityPanel({ similarMolecules = [] }: Props) {
       <p className="text-sm text-[var(--muted-foreground)] mb-3">
         {similarMolecules.length} similar molecules found in ChEMBL/PubChem:
       </p>
-      {similarMolecules.map((s, i) => (
+      {safeMolecules.map((s, i) => (
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: SMILES strings may duplicate
           key={i}

@@ -58,6 +58,14 @@ export async function getSystemStatus(): Promise<Record<string, unknown>> {
   }
 }
 
+export function getDockedPoseUrl(sessionId: string, poseId: string): string {
+  return `${API_URL}/api/docked-poses/${sessionId}/${poseId}`;
+}
+
+export function getStructureUrl(sessionId: string): string {
+  return `${API_URL}/api/structure/${sessionId}`;
+}
+
 export async function listThemes(): Promise<Record<string, unknown>[]> {
   try {
     const res = await fetch(`${API_URL}/api/themes`);

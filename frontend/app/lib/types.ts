@@ -62,6 +62,8 @@ export interface DockingResult {
   binding_energy: number;
   confidence: "Very Strong" | "Strong" | "Moderate" | "Weak";
   method: string;
+  pose_id?: string | null;
+  pose_format?: string | null;
 }
 
 export interface SelectivityResult {
@@ -98,6 +100,61 @@ export interface ToxicophoreHighlight {
   flagged_atoms: number[];
   pains_match_name: string;
   reason: string;
+}
+
+export interface SimilarCompound {
+  chembl_id: string;
+  smiles: string;
+  similarity?: number;
+  clinical_phase?: string;
+  target?: string;
+}
+
+export interface ResistanceFlag {
+  drug_name: string;
+  mutation: string;
+  flag_type: string;
+  reason: string;
+}
+
+export interface SynthesisScore {
+  smiles: string;
+  sa_score: number;
+  sa_category?: string;
+  estimated_steps?: number;
+  cost_estimate?: string;
+}
+
+export interface SynthesisRoute {
+  smiles: string;
+  num_steps: number;
+  sa_score: number;
+  sa_category?: string;
+  estimated_steps?: number;
+  cost_estimate?: string;
+  reactions?: Record<string, unknown>[];
+  synthetic_route_summary?: string;
+  method?: string;
+}
+
+export interface MDResult {
+  smiles: string;
+  rmsd_mean: number;
+  rmsd_trajectory: number[];
+  stability_label: "STABLE" | "BORDERLINE" | "UNSTABLE";
+  mmgbsa_dg: number;
+  rmsd_stable: boolean;
+}
+
+export interface BindingPocket {
+  center_x: number;
+  center_y: number;
+  center_z: number;
+  size_x: number;
+  size_y: number;
+  size_z: number;
+  score?: number;
+  method?: string;
 }
 
 export interface EvolutionNode {
@@ -154,6 +211,9 @@ export interface RankedLead {
   rank: number;
   smiles: string;
   compound_name: string;
+  structure?: string;
+  pose_id?: string | null;
+  pose_format?: string | null;
   docking_score: number | null;
   confidence: string;
   admet_pass: boolean;
@@ -206,13 +266,21 @@ export interface PipelineState {
   literature: LiteratureItem[];
   proteins: ProteinItem[];
   structures: StructureItem[];
+  binding_pocket?: BindingPocket | null;
+  pocket_detection_method?: string | null;
   known_compounds: KnownCompound[];
   docking_results: DockingResult[];
   selectivity_results: SelectivityResult[];
   admet_profiles: ADMETProfile[];
   toxicophore_highlights: ToxicophoreHighlight[];
   evolution_tree: EvolutionTree | null;
+  md_results?: MDResult[];
   clinical_trials: ClinicalTrial[];
+  similar_compounds?: SimilarCompound[];
+  resistance_flags?: ResistanceFlag[];
+  synthesis_routes?: SynthesisRoute[];
+  sa_scores?: SynthesisScore[];
+  synthesis_feasibility?: string | null;
   knowledge_graph: KnowledgeGraph | null;
   reasoning_trace: Record<string, string> | null;
   summary: string | null;

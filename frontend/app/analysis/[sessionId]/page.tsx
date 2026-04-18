@@ -11,6 +11,7 @@ import { EvolutionTree } from "@/app/components/analysis/EvolutionTree";
 import { ExportButton } from "@/app/components/analysis/ExportButton";
 import { KnowledgeGraph } from "@/app/components/analysis/KnowledgeGraph";
 import { LangSmithTrace } from "@/app/components/analysis/LangSmithTrace";
+import { MoleculeViewer3D } from "@/app/components/analysis/MoleculeViewer3D";
 import { MDValidation } from "@/app/components/analysis/MDValidation";
 import { MoleculeCard } from "@/app/components/analysis/MoleculeCard";
 // Components
@@ -27,8 +28,13 @@ import { Progress } from "@/app/components/ui/progress";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { useSSEStream } from "@/app/hooks/useSSEStream";
-import { getSessionResult } from "@/app/lib/api";
-import type { FinalReport, PipelineState, SelectivityResult } from "@/app/lib/types";
+import { getDockedPoseUrl, getSessionResult, getStructureUrl } from "@/app/lib/api";
+import type {
+  FinalReport,
+  PipelineState,
+  SelectivityResult,
+  SynthesisScore,
+} from "@/app/lib/types";
 
 interface PageProps {
   params: Promise<{ sessionId: string }>;
@@ -37,27 +43,86 @@ interface PageProps {
 export default function AnalysisPage({ params }: PageProps) {
   const { sessionId } = use(params);
   const router = useRouter();
-  const { events, isComplete, error: streamError } = useSSEStream(sessionId);
+  const { events, isComplete, error: streamError, latestState } = useSSEStream(sessionId);
   const [result, setResult] = useState<PipelineState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const startTimeRef = useRef(Date.now());
+
+  const mergeAll = (prev: PipelineState | null, next: Partial<PipelineState>) => {
+    return { ...(prev ?? {}), ...next } as PipelineState;
+  };
+
+  const mergeNonNull = (prev: PipelineState | null, next: Partial<PipelineState>) => {
+    const merged: Record<string, unknown> = { ...(prev ?? {}) };
+    for (const [key, value] of Object.entries(next)) {
+      if (value !== undefined && value !== null) {
+        merged[key] = value;
+      }
+    }
+    return merged as PipelineState;
+  };
 
   // Determine progress from events
   const completedAgents = events.filter((e) => e.event === "agent_complete").length;
   const progress = Math.min(95, (completedAgents / 22) * 100);
   const currentAgent = [...events].reverse().find((e) => e.event === "agent_start")?.agent;
 
-  // Load final result when complete
+  useEffect(() => {
+    if (!latestState) return;
+    setResult((prev) => mergeAll(prev, latestState));
+  }, [latestState]);
+
+  // Load final result when complete (fallback for refresh / missed SSE)
   useEffect(() => {
     if (!isComplete) return;
+    if (latestState?.final_report) return;
     getSessionResult(sessionId)
-      .then((data) => setResult(data as unknown as PipelineState))
+      .then((data) => setResult((prev) => mergeNonNull(prev, data as PipelineState)))
       .catch((e) => setLoadError(e.message));
-  }, [isComplete, sessionId]);
+  }, [isComplete, latestState, sessionId]);
 
   const report = result?.final_report as FinalReport | null;
   const selectivity = (result?.selectivity_results ?? []) as SelectivityResult[];
-  const primaryPdbId = result?.structures?.[0]?.pdb_id;
+  const normalizePdbId = (value?: string | null) => {
+    const trimmed = value?.trim().toUpperCase();
+    return trimmed && /^[0-9A-Z]{4}$/.test(trimmed) ? trimmed : undefined;
+  };
+  const primaryPdbId = normalizePdbId(result?.structures?.[0]?.pdb_id);
+  const dockingResults = result?.docking_results ?? [];
+  const topDock = dockingResults[0];
+  const buildPoseUrl = (poseId?: string | null) =>
+    poseId ? getDockedPoseUrl(sessionId, poseId) : undefined;
+  const topDockPoseUrl = topDock?.pose_id ? buildPoseUrl(topDock.pose_id) : undefined;
+  const proteinUrl = result?.pdb_content ? getStructureUrl(sessionId) : undefined;
+  const rawSimilar = (result as Record<string, unknown> | null)?.similar_molecules;
+  const similarMolecules = Array.isArray(result?.similar_compounds)
+    ? result?.similar_compounds
+        .map((c) => c.smiles || c.chembl_id)
+        .filter(Boolean)
+    : Array.isArray(rawSimilar)
+      ? rawSimilar.filter((s): s is string => typeof s === "string")
+      : [];
+  const resistanceFlags = Array.isArray(result?.resistance_flags)
+    ? result.resistance_flags
+        .map((f) => f.reason || f.drug_name || f.mutation)
+        .filter(Boolean)
+    : [];
+  const synthesisScores = (result?.sa_scores ?? []) as SynthesisScore[];
+  const synthesisItems = report
+    ? report.ranked_leads
+        .slice(0, 3)
+        .map((lead: any) => ({
+          key: lead.smiles,
+          title: lead.compound_name || `Candidate #${lead.rank}`,
+          rank: lead.rank,
+          numSteps: lead.synthesis_steps,
+          saScore: lead.sa_score,
+          estimatedCost: lead.synthesis_cost,
+        }))
+        .filter((item: any) =>
+          [item.numSteps, item.saScore, item.estimatedCost].some((v) => v !== undefined)
+        )
+    : [];
 
   return (
     <div
@@ -92,6 +157,17 @@ export default function AnalysisPage({ params }: PageProps) {
             <span className="text-sm">{streamError || loadError}</span>
           </div>
         )}
+
+        {result?.warnings?.length ? (
+          <div className="mb-6 p-4 rounded-lg border border-amber-400/40 bg-amber-400/10">
+            <div className="text-xs font-semibold text-amber-700 mb-2">Pipeline warnings</div>
+            <ul className="text-xs text-amber-900 space-y-1">
+              {result.warnings.map((warning, index) => (
+                <li key={`${warning}-${index}`}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         {/* Main layout: sidebar + content */}
         <div className="flex gap-6 items-start">
@@ -205,7 +281,11 @@ export default function AnalysisPage({ params }: PageProps) {
                           key={lead.smiles}
                           lead={lead}
                           rank={lead.rank}
-                          pdbId={primaryPdbId}
+                          pdbId={normalizePdbId(lead.structure) || primaryPdbId}
+                          proteinUrl={proteinUrl}
+                          ligandPoseUrl={buildPoseUrl(lead.pose_id)}
+                          ligandPoseFormat={lead.pose_format}
+                          showProtein={false}
                         />
                       ))}
                     </div>
@@ -257,51 +337,83 @@ export default function AnalysisPage({ params }: PageProps) {
                             </tr>
                           </thead>
                           <tbody>
-                            {selectivity.map((s) => (
-                              <tr
-                                key={`${s.smiles}-${s.off_target_pdb}`}
-                                className="border-t border-[var(--border)] hover:bg-[var(--muted)]/30"
-                              >
-                                <td className="p-3 font-mono text-xs max-w-32 truncate">
-                                  {s.smiles.slice(0, 20)}…
-                                </td>
-                                <td className="p-3 text-emerald-600">
-                                  {s.target_affinity != null ? s.target_affinity.toFixed(2) : "N/A"}
-                                </td>
-                                <td className="p-3 text-red-500">
-                                  {s.off_target_affinity != null
-                                    ? s.off_target_affinity.toFixed(2)
-                                    : "N/A"}
-                                </td>
-                                <td className="p-3 font-bold">
-                                  {s.selectivity_ratio != null
-                                    ? s.selectivity_ratio.toFixed(2)
-                                    : "N/A"}
-                                  ×
-                                </td>
-                                <td className="p-3">
-                                  <span
-                                    className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                                    style={{
-                                      color:
-                                        s.selectivity_label === "High"
-                                          ? "var(--selectivity-high)"
-                                          : s.selectivity_label === "Moderate"
-                                            ? "var(--selectivity-moderate)"
-                                            : s.selectivity_label === "Low"
-                                              ? "var(--selectivity-low)"
-                                              : "var(--selectivity-dangerous)",
-                                      background:
-                                        s.selectivity_label === "High"
-                                          ? "color-mix(in srgb, var(--selectivity-high) 10%, transparent)"
-                                          : "color-mix(in srgb, var(--selectivity-dangerous) 10%, transparent)",
-                                    }}
-                                  >
-                                    {s.selectivity_label}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
+                            {selectivity.map((s) => {
+                              const targetAffinity =
+                                (s as any).target_affinity ?? (s as any).mutant_affinity ?? null;
+                              const offTargetAffinity =
+                                (s as any).off_target_affinity ??
+                                (s as any).wildtype_affinity ??
+                                (s as any).best_off_target_affinity ??
+                                null;
+                              const ratio =
+                                (s as any).selectivity_ratio ??
+                                (s as any).fold_selectivity ??
+                                (s as any).selectivity_score ??
+                                null;
+                              const rawLabel =
+                                (s as any).selectivity_label ?? (s as any).selectivity_assessment;
+                              const label = typeof rawLabel === "string" ? rawLabel : "N/A";
+                              const normalized = label.toLowerCase();
+                              const tone = normalized.includes("high")
+                                ? "high"
+                                : normalized.includes("moderate") || normalized.includes("selective")
+                                  ? "moderate"
+                                  : normalized.includes("low") || normalized.includes("non")
+                                    ? "low"
+                                    : normalized.includes("danger")
+                                      ? "danger"
+                                      : "low";
+
+                              return (
+                                <tr
+                                  key={`${s.smiles}-${(s as any).off_target_pdb ?? "wt"}`}
+                                  className="border-t border-[var(--border)] hover:bg-[var(--muted)]/30"
+                                >
+                                  <td className="p-3 font-mono text-xs max-w-32 truncate">
+                                    {s.smiles.slice(0, 20)}…
+                                  </td>
+                                  <td className="p-3 text-emerald-600">
+                                    {typeof targetAffinity === "number"
+                                      ? targetAffinity.toFixed(2)
+                                      : "N/A"}
+                                  </td>
+                                  <td className="p-3 text-red-500">
+                                    {typeof offTargetAffinity === "number"
+                                      ? offTargetAffinity.toFixed(2)
+                                      : "N/A"}
+                                  </td>
+                                  <td className="p-3 font-bold">
+                                    {typeof ratio === "number" ? ratio.toFixed(2) : "N/A"}
+                                    ×
+                                  </td>
+                                  <td className="p-3">
+                                    <span
+                                      className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                                      style={{
+                                        color:
+                                          tone === "high"
+                                            ? "var(--selectivity-high)"
+                                            : tone === "moderate"
+                                              ? "var(--selectivity-moderate)"
+                                              : tone === "low"
+                                                ? "var(--selectivity-low)"
+                                                : "var(--selectivity-dangerous)",
+                                        background:
+                                          tone === "high"
+                                            ? "color-mix(in srgb, var(--selectivity-high) 10%, transparent)"
+                                            : tone === "moderate"
+                                              ? "color-mix(in srgb, var(--selectivity-moderate) 10%, transparent)"
+                                              : tone === "low"
+                                                ? "color-mix(in srgb, var(--selectivity-low) 10%, transparent)"
+                                                : "color-mix(in srgb, var(--selectivity-dangerous) 10%, transparent)",
+                                      }}
+                                    >
+                                      {label}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                         {!selectivity.length && (
@@ -342,9 +454,9 @@ export default function AnalysisPage({ params }: PageProps) {
 
                   {/* Molecular Dynamics */}
                   <TabsContent value="md">
-                    {(result as any).md_results && (result as any).md_results.length > 0 ? (
+                    {result?.md_results && result.md_results.length > 0 ? (
                       <div className="space-y-4">
-                        {(result as any).md_results.map((md: any) => (
+                        {result.md_results.map((md: any) => (
                           <MDValidation
                             key={md.smiles}
                             rmsdStable={md.rmsd_stable}
@@ -364,29 +476,108 @@ export default function AnalysisPage({ params }: PageProps) {
 
                   {/* Synthesis */}
                   <TabsContent value="synthesis">
-                    {report.ranked_leads.slice(0, 3).map((lead: any) => (
-                      <div key={lead.smiles} className="mb-6">
-                        <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
-                          {lead.compound_name || `Candidate #${lead.rank}`}
-                          <Badge variant="secondary">{lead.rank}</Badge>
-                        </h4>
-                        <SynthesisRoute
-                          numSteps={lead.synthesis_steps}
-                          saScore={lead.sa_score}
-                          estimatedCost={lead.synthesis_cost}
-                          synthesizable={
-                            lead.synthesis_steps ? lead.synthesis_steps <= 6 : undefined
-                          }
-                        />
+                    {synthesisItems.length > 0 &&
+                      synthesisItems.map((item: any) => (
+                        <div key={item.key} className="mb-6">
+                          <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
+                            {item.title}
+                            <Badge variant="secondary">{item.rank}</Badge>
+                          </h4>
+                          <SynthesisRoute
+                            numSteps={item.numSteps}
+                            saScore={item.saScore}
+                            estimatedCost={item.estimatedCost}
+                            synthesizable={
+                              item.numSteps !== undefined ? item.numSteps <= 6 : undefined
+                            }
+                          />
+                        </div>
+                      ))}
+                    {synthesisItems.length === 0 && synthesisScores.length > 0 && (
+                      <div className="space-y-6">
+                        {synthesisScores.slice(0, 3).map((score, i) => (
+                          <div key={`${score.smiles}-${i}`}>
+                            <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
+                              Candidate #{i + 1}
+                              <Badge variant="secondary">{i + 1}</Badge>
+                            </h4>
+                            <SynthesisRoute
+                              numSteps={score.estimated_steps}
+                              saScore={score.sa_score}
+                              estimatedCost={score.cost_estimate}
+                              synthesizable={
+                                score.estimated_steps !== undefined
+                                  ? score.estimated_steps <= 6
+                                  : undefined
+                              }
+                            />
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
+                    {synthesisItems.length === 0 && synthesisScores.length === 0 && (
+                      <p className="text-sm text-[var(--muted-foreground)] p-4">
+                        No synthesis data available.
+                      </p>
+                    )}
                   </TabsContent>
 
                   {/* Docking */}
                   <TabsContent value="docking">
+                    {topDock ? (
+                      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] gap-4 mb-6">
+                        <div className="rounded-xl border border-[var(--border)] p-4">
+                          <h3 className="font-semibold text-sm mb-3">
+                            Docked Pose (Top-ranked)
+                          </h3>
+                          <MoleculeViewer3D
+                            pdbId={normalizePdbId(topDock.structure) || primaryPdbId}
+                            proteinUrl={proteinUrl}
+                            ligandPoseUrl={topDockPoseUrl}
+                            ligandPoseFormat={topDock.pose_format}
+                            className="h-64 rounded-lg"
+                          />
+                          <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">
+                            {topDockPoseUrl
+                              ? "Docked ligand pose loaded from Vina output."
+                              : "Docked pose not available for this ligand."}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-[var(--border)] p-4 space-y-3">
+                          <div>
+                            <div className="text-xs text-[var(--muted-foreground)]">Ligand</div>
+                            <div className="text-sm font-semibold">{topDock.compound_name}</div>
+                            <div className="text-[10px] font-mono text-[var(--muted-foreground)] break-all mt-1">
+                              {topDock.smiles}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-[var(--muted-foreground)]">Binding energy</span>
+                            <span className="font-mono font-semibold">
+                              {topDock.binding_energy.toFixed(2)} kcal/mol
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-[var(--muted-foreground)]">Method</span>
+                            <span className="font-medium uppercase">{topDock.method}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-[var(--muted-foreground)]">Structure</span>
+                            <span className="font-medium">
+                              {normalizePdbId(topDock.structure) || primaryPdbId || "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-[var(--muted-foreground)] p-4">
+                        No docking data available.
+                      </p>
+                    )}
+
                     <div className="rounded-xl border border-[var(--border)] p-4">
                       <h3 className="font-semibold text-sm mb-3">Docking Score Distribution</h3>
-                      <DockingScoreChart results={result.docking_results ?? []} />
+                      <DockingScoreChart results={dockingResults} />
                     </div>
                   </TabsContent>
 
@@ -423,9 +614,16 @@ export default function AnalysisPage({ params }: PageProps) {
                       <div className="space-y-4">
                         <div className="rounded-xl border border-[var(--border)] p-4">
                           <h3 className="font-semibold text-sm mb-3">Resistance Analysis</h3>
-                          <ResistanceProfile forecast={report.resistance_forecast} />
+                          <ResistanceProfile
+                            forecast={report.resistance_forecast}
+                            resistanceFlags={resistanceFlags}
+                          />
                         </div>
-                        <LangSmithTrace runId={result.langsmith_run_id} metrics={report.metrics} />
+                        <LangSmithTrace
+                          runId={result.langsmith_run_id}
+                          metrics={report.metrics}
+                          agentCount={Object.keys(result.agent_statuses ?? {}).length}
+                        />
                       </div>
                     </div>
                   </TabsContent>
@@ -456,13 +654,7 @@ export default function AnalysisPage({ params }: PageProps) {
                           </div>
                         </div>
                       ))}
-                      <SimilarityPanel
-                        similarMolecules={
-                          (result as unknown as Record<string, unknown>).similar_molecules as
-                            | string[]
-                            | undefined
-                        }
-                      />
+                      <SimilarityPanel similarMolecules={similarMolecules} />
                     </div>
                   </TabsContent>
 
@@ -473,7 +665,11 @@ export default function AnalysisPage({ params }: PageProps) {
                         <h3 className="font-semibold text-sm mb-3">Export Discovery</h3>
                         <ExportButton sessionId={sessionId} />
                       </div>
-                      <LangSmithTrace runId={result.langsmith_run_id} metrics={report.metrics} />
+                      <LangSmithTrace
+                        runId={result.langsmith_run_id}
+                        metrics={report.metrics}
+                        agentCount={Object.keys(result.agent_statuses ?? {}).length}
+                      />
                     </div>
                   </TabsContent>
                 </Tabs>

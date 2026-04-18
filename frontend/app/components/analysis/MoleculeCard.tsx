@@ -23,9 +23,21 @@ interface Props {
   };
   rank: number;
   pdbId?: string;
+  proteinUrl?: string;
+  ligandPoseUrl?: string;
+  ligandPoseFormat?: string | null;
+  showProtein?: boolean;
 }
 
-export function MoleculeCard({ lead, rank, pdbId }: Props) {
+export function MoleculeCard({
+  lead,
+  rank,
+  pdbId,
+  proteinUrl,
+  ligandPoseUrl,
+  ligandPoseFormat,
+  showProtein = false,
+}: Props) {
   const [show3D, setShow3D] = useState(false);
 
   const gnnScore = lead.gnn_dg ?? lead.docking_score;
@@ -98,7 +110,13 @@ export function MoleculeCard({ lead, rank, pdbId }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <MoleculeViewer3D pdbId={pdbId} className="h-32 rounded-lg" />
+            <MoleculeViewer3D
+              pdbId={showProtein ? pdbId : undefined}
+              proteinUrl={showProtein ? proteinUrl : undefined}
+              ligandPoseUrl={ligandPoseUrl}
+              ligandPoseFormat={ligandPoseFormat}
+              className="h-32 rounded-lg"
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -109,6 +127,27 @@ export function MoleculeCard({ lead, rank, pdbId }: Props) {
           {show3D ? "3D Protein" : "2D Molecule"}
         </span>
       </div>
+      {show3D && (
+        <p
+          className={`text-[10px] ${
+            showProtein
+              ? pdbId || proteinUrl
+                ? "text-[var(--muted-foreground)]"
+                : "text-[var(--destructive)]"
+              : "text-[var(--muted-foreground)]"
+          }`}
+        >
+          {showProtein
+            ? pdbId || proteinUrl
+              ? ligandPoseUrl
+                ? `Protein: ${pdbId ? pdbId.toUpperCase() : "Session structure"} • Docked pose loaded`
+                : `Protein: ${pdbId ? pdbId.toUpperCase() : "Session structure"} • Docked pose unavailable`
+              : "No PDB structure available for 3D view."
+            : ligandPoseUrl
+              ? "Docked ligand pose loaded."
+              : "Docked ligand pose unavailable."}
+        </p>
+      )}
 
       {/* Stability & Properties */}
       <div className="space-y-2">

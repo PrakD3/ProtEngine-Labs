@@ -33,7 +33,18 @@ app.add_middleware(CORSMiddleware,
     allow_origins=["http://localhost:3000", "https://*.vercel.app"],
     allow_methods=["*"], allow_headers=["*"], allow_credentials=True)
 
-from routers import analysis, stream, status, molecules, export, benchmark, discoveries, themes
+from routers import (
+    analysis,
+    stream,
+    status,
+    molecules,
+    export,
+    benchmark,
+    discoveries,
+    themes,
+    docked_poses,
+    structure,
+)
 app.include_router(analysis.router,    prefix="/api")
 app.include_router(stream.router,      prefix="/api")
 app.include_router(status.router,      prefix="/api")
@@ -42,3 +53,5 @@ app.include_router(export.router,      prefix="/api")
 app.include_router(benchmark.router,   prefix="/api")
 app.include_router(discoveries.router, prefix="/api")
 app.include_router(themes.router,      prefix="/api")
+app.include_router(docked_poses.router, prefix="/api")
+app.include_router(structure.router,    prefix="/api")
