@@ -31,6 +31,7 @@ backend/build/
 backend/*.egg-info/
 backend/venv/
 backend/.venv/
+backend/data/docked_poses/
 
 # ─── Root legacy Next.js (before restructure) ───────────────────────────────
 /node_modules/

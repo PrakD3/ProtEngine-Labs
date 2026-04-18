@@ -11,7 +11,7 @@ load_dotenv()
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+DATABASE_URL = os.getenv("NEON_DATABASE_URL", "") or os.getenv("DATABASE_URL", "")
 
 
 def get_engine():
