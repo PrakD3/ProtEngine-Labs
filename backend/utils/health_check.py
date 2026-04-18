@@ -15,7 +15,7 @@ def check_vina() -> bool:
             check=False
         )
         return True
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (FileNotFoundError, subprocess.TimeoutExpired, PermissionError):
         return False
 
 
@@ -29,7 +29,7 @@ def check_obabel() -> bool:
             check=False
         )
         return True
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (FileNotFoundError, subprocess.TimeoutExpired, PermissionError):
         return False
 
 
@@ -43,7 +43,7 @@ def check_fpocket() -> bool:
             check=False
         )
         return True
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (FileNotFoundError, subprocess.TimeoutExpired, PermissionError):
         return False
 
 

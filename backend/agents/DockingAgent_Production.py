@@ -29,7 +29,7 @@ from typing import Optional
 try:
     from utils.logger import get_logger
 except ModuleNotFoundError:
-    from backend.utils.logger import get_logger
+    from utils.logger import get_logger
 
 
 @dataclass

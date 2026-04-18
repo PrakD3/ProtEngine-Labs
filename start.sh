@@ -1,120 +1,127 @@
 #!/bin/bash
-set -e
 
-# AXONENGINE v4.0 — Drug Discovery AI Quick Start (Unix/Linux/Mac)
-# ================================================================
+# AXONENGINE v4.0 — Drug Discovery AI Quick Start (Separate Terminals)
+# ====================================================================
 
-echo "🧬 Drug Discovery AI — Quick Start (Unix/Linux/Mac)"
-echo "======================================================"
-echo "AXONENGINE v4.0 with Advanced ML Features"
+echo "🧬 Drug Discovery AI — Quick Start (Separate Terminals)"
+echo "========================================================"
 echo ""
 
-# ── Backend Setup ────────────────────────────────────────────────────────────
-echo ""
-echo "> Configuring backend environment..."
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-cd backend
-
-# Create .env if not exists
-if [ ! -f ".env" ]; then
-    if [ -f ".env.example" ]; then
-        cp .env.example .env
-        echo "  WARNING: Created backend/.env from .env.example — add your API keys!"
-    else
-        echo "  WARNING: No .env.example found. Create backend/.env manually."
-    fi
+# Detect available terminal emulator
+TERMINAL=""
+if command -v gnome-terminal &> /dev/null; then
+    TERMINAL="gnome-terminal"
+elif command -v xterm &> /dev/null; then
+    TERMINAL="xterm"
+elif command -v konsole &> /dev/null; then
+    TERMINAL="konsole"
+elif command -v xfce4-terminal &> /dev/null; then
+    TERMINAL="xfce4-terminal"
 fi
 
-# Create virtual environment if not exists
+# ── Backend Launcher Script ──────────────────────────────────────────────────
+cat > "$SCRIPT_DIR/backend_launcher.sh" << 'BACKEND_SCRIPT'
+#!/bin/bash
+cd "$(dirname "$0")/backend"
+
+# Setup environment
+if [ ! -f ".env" ]; then
+    [ -f ".env.example" ] && cp .env.example .env
+fi
+
 if [ ! -d ".venv" ]; then
-    echo "  Creating Python virtual environment..."
     python3 -m venv .venv
 fi
 
-# Activate virtual environment
 source .venv/bin/activate
 
-# Install dependencies
-echo "  Installing core Python dependencies..."
+echo "Installing backend dependencies..."
 pip install -q -r requirements.txt 2>/dev/null || pip install -r requirements.txt
 
-# ── V4 Optional Features ──────────────────────────────────────────────────────
 echo ""
-echo "🔬 V4 OPTIONAL ML FEATURES (Enhanced Predictions)"
-echo "  > Checking for optional molecular docking tools..."
-
-# Check for Vina
-if pip list | grep -q vina; then
-    echo "  ✓ Vina found - real docking enabled"
-else
-    echo "  ⚠ Vina not installed - molecular docking disabled (using hash fallback)"
-    echo "    Install with: pip install vina meeko"
-fi
-
-# Check for ML features
-echo ""
-echo "🤖 Optional ML Model Features (slow first run, requires 4GB VRAM):"
-echo "   To enable V4 ML features, install: pip install -r requirements-v4.txt"
-echo "   Features include:"
-echo "     • ESM-1v variant pathogenicity scoring"
-echo "     • DimeNet++ GNN affinity prediction"
-echo "     • Pocket2Mol 3D-conditioned generation"
-echo "   Set env variable: export ENABLE_V4_ML=1"
+echo "🚀 Backend Starting..."
+echo "📡 API: http://localhost:8000"
+echo "📖 Docs: http://localhost:8000/docs"
 echo ""
 
-# Start backend in background
-echo "  Launching uvicorn on http://localhost:8000 ..."
-uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
-BACKEND_PID=$!
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-cd ..
+# Keep terminal open on exit
+read -p "Press Enter to close..."
+BACKEND_SCRIPT
 
-# ── Frontend ──────────────────────────────────────────────────────────────────
-echo ""
-echo "> Starting frontend..."
+chmod +x "$SCRIPT_DIR/backend_launcher.sh"
 
-cd frontend
+# ── Frontend Launcher Script ─────────────────────────────────────────────────
+cat > "$SCRIPT_DIR/frontend_launcher.sh" << 'FRONTEND_SCRIPT'
+#!/bin/bash
+cd "$(dirname "$0")/frontend"
 
-# Create .env.local if not exists
 if [ ! -f ".env.local" ]; then
-    if [ -f ".env.local.example" ]; then
-        cp .env.local.example .env.local
-        echo "  Created frontend/.env.local from .env.local.example"
-    else
-        cat > .env.local << 'EOF'
+    cat > .env.local << 'EOF'
 NEXT_PUBLIC_API_URL=http://localhost:8000
 EOF
-        echo "  Created frontend/.env.local"
-    fi
 fi
 
-# Install npm dependencies
 if [ ! -d "node_modules" ]; then
-    echo "  Installing npm dependencies..."
+    echo "Installing frontend dependencies..."
     npm install
 fi
 
-# Start frontend in background
-echo "  Launching Next.js on http://localhost:3000 ..."
-npm run dev &
-FRONTEND_PID=$!
-
-cd ..
-
-# ── Done ─────────────────────────────────────────────────────────────────────
 echo ""
-echo "✅ Both services launching:"
-echo "   Frontend  > http://localhost:3000"
-echo "   Backend   > http://localhost:8000"
-echo "   API Docs  > http://localhost:8000/docs"
-echo ""
-echo "Press Ctrl+C to stop all services"
+echo "🚀 Frontend Starting..."
+echo "🌐 App: http://localhost:3000"
 echo ""
 
-# Wait for both services
-wait $BACKEND_PID $FRONTEND_PID 2>/dev/null || true
+npm run dev
 
-# Cleanup
+# Keep terminal open on exit
+read -p "Press Enter to close..."
+FRONTEND_SCRIPT
+
+chmod +x "$SCRIPT_DIR/frontend_launcher.sh"
+
+# ── Launch Terminals ────────────────────────────────────────────────────────
+echo "Launching services in separate terminals..."
 echo ""
-echo "Shutting down services..."
-kill $BACKEND_PID $FRONTEND_PID 2>/dev/null || true
+
+if [ "$TERMINAL" = "gnome-terminal" ]; then
+    gnome-terminal -- bash -c "$SCRIPT_DIR/backend_launcher.sh" &
+    sleep 1
+    gnome-terminal -- bash -c "$SCRIPT_DIR/frontend_launcher.sh" &
+    
+elif [ "$TERMINAL" = "xterm" ]; then
+    xterm -e bash "$SCRIPT_DIR/backend_launcher.sh" &
+    sleep 1
+    xterm -e bash "$SCRIPT_DIR/frontend_launcher.sh" &
+    
+elif [ "$TERMINAL" = "konsole" ]; then
+    konsole -e bash "$SCRIPT_DIR/backend_launcher.sh" &
+    sleep 1
+    konsole -e bash "$SCRIPT_DIR/frontend_launcher.sh" &
+    
+elif [ "$TERMINAL" = "xfce4-terminal" ]; then
+    xfce4-terminal -e "bash $SCRIPT_DIR/backend_launcher.sh" &
+    sleep 1
+    xfce4-terminal -e "bash $SCRIPT_DIR/frontend_launcher.sh" &
+    
+else
+    echo "❌ No compatible terminal emulator found."
+    echo ""
+    echo "Install one of: gnome-terminal, xterm, konsole, xfce4-terminal"
+    echo ""
+    echo "Or run manually:"
+    echo "  Terminal 1: bash $SCRIPT_DIR/backend_launcher.sh"
+    echo "  Terminal 2: bash $SCRIPT_DIR/frontend_launcher.sh"
+    exit 1
+fi
+
+echo "✅ Services launching in separate terminals..."
+echo ""
+echo "Frontend:  http://localhost:3000"
+echo "Backend:   http://localhost:8000"
+echo "API Docs:  http://localhost:8000/docs"
+echo ""
+echo "Close the terminal windows to stop services."
