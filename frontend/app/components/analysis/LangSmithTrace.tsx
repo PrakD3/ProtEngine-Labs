@@ -6,9 +6,10 @@ import type { PipelineMetrics } from "@/app/lib/types";
 interface Props {
   runId: string | null;
   metrics: PipelineMetrics | null;
+  agentCount?: number;
 }
 
-export function LangSmithTrace({ runId, metrics }: Props) {
+export function LangSmithTrace({ runId, metrics, agentCount }: Props) {
   const [open, setOpen] = useState(false);
 
   if (!runId && !metrics) return null;
@@ -48,10 +49,12 @@ export function LangSmithTrace({ runId, metrics }: Props) {
                 <span className="text-[var(--muted-foreground)]">Selective leads</span>
                 <span>{metrics.selective_leads}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--muted-foreground)]">Agents run</span>
-                <span>18</span>
-              </div>
+              {agentCount !== undefined && (
+                <div className="flex justify-between">
+                  <span className="text-[var(--muted-foreground)]">Agents run</span>
+                  <span>{agentCount}</span>
+                </div>
+              )}
             </>
           )}
           {runId && (

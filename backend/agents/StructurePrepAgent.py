@@ -55,6 +55,8 @@ class StructurePrepAgent:
         updated_structures = []
         plddt_at_mutation = None
         structure_confidence = "UNKNOWN"
+        wt_pdb_id = None
+        wt_local_path = None
 
         # Try to download wildtype structure if we know the gene
         gene = (mutation_context.get("gene") or "").upper()
@@ -99,6 +101,26 @@ class StructurePrepAgent:
                             if plddt_at_mutation is not None:
                                 structure_confidence = self._classify_confidence(plddt_at_mutation)
 
+        # Final fallback: use known wildtype structure when mutant structure is missing.
+        if not pdb_content and wt_pdb_content and wt_pdb_id:
+            pdb_content = wt_pdb_content
+            fallback_struct = {
+                "pdb_id": wt_pdb_id,
+                "title": f"WT fallback {wt_pdb_id}",
+                "experimental_methods": "Unknown",
+                "resolution": None,
+                "pdb_path": str(wt_local_path) if wt_local_path else None,
+                "is_mutant": False,
+                "is_wildtype": True,
+                "fallback": True,
+            }
+            if updated_structures:
+                updated_structures.insert(0, fallback_struct)
+            else:
+                updated_structures = [fallback_struct]
+            state.setdefault("warnings", []).append(
+                f"Structure fallback: using wildtype PDB {wt_pdb_id} (mutant structure unavailable)."
+            )
         # If we don't have WT yet and have mutant sequence, fold WT version
         if not wt_pdb_content and pdb_content:
             proteins = state.get("proteins", [])

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AgentEvent } from "@/app/lib/types";
+import type { AgentEvent, PipelineState } from "@/app/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -9,6 +9,7 @@ export function useSSEStream(sessionId: string | null) {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [latestState, setLatestState] = useState<Partial<PipelineState> | null>(null);
   const esRef = useRef<EventSource | null>(null);
 
   const connect = useCallback(() => {
@@ -24,6 +25,9 @@ export function useSSEStream(sessionId: string | null) {
       try {
         const data: AgentEvent = JSON.parse(e.data);
         setEvents((prev) => [...prev, data]);
+        if (data.data && typeof data.data === "object") {
+          setLatestState((prev) => ({ ...(prev ?? {}), ...data.data }));
+        }
         if (data.event === "pipeline_complete") {
           setIsComplete(true);
           es.close();
@@ -46,5 +50,5 @@ export function useSSEStream(sessionId: string | null) {
     };
   }, [connect]);
 
-  return { events, isComplete, error };
+  return { events, isComplete, error, latestState };
 }

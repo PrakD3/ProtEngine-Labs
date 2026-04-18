@@ -1,9 +1,11 @@
 """Real molecular docking via Vina or Gnina — no fake scores, no fallbacks."""
 
+import hashlib
 import os
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 from utils.logger import get_logger
 
@@ -116,18 +118,36 @@ class DockingAgent:
             _prepare_receptor(wt_pdb_content, log) if (has_wt and wt_pdb_content) else None
         )
 
+        session_id = state.get("session_id", "default")
+        pose_dir = Path(__file__).parent.parent / "data" / "docked_poses" / session_id
+        pose_dir.mkdir(parents=True, exist_ok=True)
+        pose_map: dict[str, str] = {}
+
         results: list = []
         skipped = 0
 
-        for mol in molecules[:50]:
+        for idx, mol in enumerate(molecules[:50], start=1):
             smiles = mol.get("smiles", "")
             if not smiles:
                 continue
 
-            mut_energy = await _dock_one(smiles, pocket, receptor_pdbqt, exe, log)
+            pose_id = _pose_id(smiles, idx)
+            mut_energy, pose_meta = await _dock_one(
+                smiles,
+                pocket,
+                receptor_pdbqt,
+                exe,
+                log,
+                pose_dir=pose_dir,
+                pose_id=pose_id,
+                persist_pose=True,
+            )
             if mut_energy is None:
                 skipped += 1
                 continue
+
+            if pose_meta and pose_meta.get("pose_path"):
+                pose_map[pose_meta["pose_id"]] = pose_meta["pose_path"]
 
             entry = {
                 "smiles": smiles,
@@ -137,11 +157,20 @@ class DockingAgent:
                 "binding_energy_formatted": _fmt(mut_energy, mode),
                 "confidence": _confidence(mut_energy),
                 "method": mode,
+                "pose_id": pose_meta.get("pose_id") if pose_meta else None,
+                "pose_format": pose_meta.get("pose_format") if pose_meta else None,
                 "is_mock": False,
             }
 
             if wt_receptor_pdbqt:
-                wt_energy = await _dock_one(smiles, pocket, wt_receptor_pdbqt, exe, log)
+                wt_energy, _ = await _dock_one(
+                    smiles,
+                    pocket,
+                    wt_receptor_pdbqt,
+                    exe,
+                    log,
+                    persist_pose=False,
+                )
                 if wt_energy is not None:
                     delta = mut_energy - wt_energy
                     entry["wt_binding_energy"] = wt_energy
@@ -157,6 +186,12 @@ class DockingAgent:
         if state.get("confidence") is None:
             state["confidence"] = {}
         state["confidence"]["docking"] = 0.7 if mode == "vina" else 0.8
+
+        if pose_map:
+            state["docked_pose_map"] = {
+                **state.get("docked_pose_map", {}),
+                **pose_map,
+            }
 
         return {
             "docking_results": results,
@@ -176,7 +211,11 @@ async def _dock_one(
     receptor_pdbqt: str,
     exe: str,
     log,
-) -> float | None:
+    *,
+    pose_dir: Path | None = None,
+    pose_id: str | None = None,
+    persist_pose: bool = True,
+) -> tuple[float | None, dict | None]:
     """Prepare one ligand and run a single Vina/Gnina docking job.
 
     Returns the best binding energy (kcal/mol, always negative) or None
@@ -188,11 +227,11 @@ async def _dock_one(
 
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
-        return None
+        return None, None
     try:
         Chem.SanitizeMol(mol)
     except Exception:
-        return None
+        return None, None
 
     mol = Chem.AddHs(mol)
 
@@ -204,7 +243,7 @@ async def _dock_one(
 
     conf_id = AllChem.EmbedMolecule(mol, params)
     if conf_id < 0:
-        return None  # Cannot generate 3-D coordinates — skip molecule
+        return None, None  # Cannot generate 3-D coordinates — skip molecule
 
     try:
         AllChem.MMFFOptimizeMolecule(mol)
@@ -216,7 +255,7 @@ async def _dock_one(
     for i in range(mol.GetNumAtoms()):
         p = conf.GetAtomPosition(i)
         if p.x != p.x:  # NaN check (NaN != NaN is True)
-            return None
+            return None, None
 
     with tempfile.TemporaryDirectory() as tmpdir:
         sdf_path = os.path.join(tmpdir, "ligand.sdf")
@@ -243,7 +282,7 @@ async def _dock_one(
         )
         if obabel.returncode != 0 or not os.path.exists(pdbqt_path):
             log.warning(f"obabel ligand conversion failed for {smiles[:40]}: {obabel.stderr[:120]}")
-            return None
+            return None, None
 
         cmd = [
             exe,
@@ -272,17 +311,112 @@ async def _dock_one(
 
         if result.returncode != 0:
             log.error(f"Vina error: returncode={result.returncode}, stderr={result.stderr[:200]}")
-            return None
+            return None, None
 
-        for line in result.stdout.splitlines():
-            if "REMARK VINA RESULT:" in line:
-                parts = line.split()
-                if len(parts) >= 4:
-                    return float(parts[3])
+        energy: float | None = None
 
-        log.warning(f"Vina produced no REMARK VINA RESULT for {smiles[:40]}")
+        # Vina writes REMARK VINA RESULT lines into the output PDBQT, not stdout.
+        if os.path.exists(out_path):
+            try:
+                with open(out_path) as f:
+                    for line in f:
+                        if "REMARK VINA RESULT:" in line:
+                            parts = line.split()
+                            if len(parts) >= 4:
+                                energy = float(parts[3])
+                                break
+            except Exception:
+                pass
+
+        # Fallback: some builds print a table to stdout; parse affinity if present.
+        if energy is None:
+            for line in result.stdout.splitlines():
+                if line.strip().startswith("1 "):
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        try:
+                            energy = float(parts[1])
+                            break
+                        except ValueError:
+                            continue
+
+        if energy is None:
+            log.warning(f"Vina produced no REMARK VINA RESULT for {smiles[:40]}")
+            return None, None
+
+        pose_meta = None
+        if persist_pose and pose_dir and pose_id and os.path.exists(out_path):
+            pose_meta = _persist_pose(out_path, pose_dir, pose_id, log)
+
+        return energy, pose_meta
+
+
+def _pose_id(smiles: str, idx: int) -> str:
+    digest = hashlib.sha256(f"{smiles}|{idx}".encode()).hexdigest()[:12]
+    return f"pose_{idx}_{digest}"
+
+
+def _persist_pose(out_path: str, pose_dir: Path, pose_id: str, log) -> dict | None:
+    pose_dir.mkdir(parents=True, exist_ok=True)
+    pdbqt_path = pose_dir / f"{pose_id}.pdbqt"
+    try:
+        shutil.copy(out_path, pdbqt_path)
+    except Exception as exc:
+        log.warning(f"Failed to persist pose {pose_id}: {exc}")
         return None
 
+    pose_path = pdbqt_path
+    pose_format = "pdbqt"
+
+    if shutil.which("obabel"):
+        pdb_path = pose_dir / f"{pose_id}.pdb"
+        obabel = subprocess.run(
+            ["obabel", str(pdbqt_path), "-O", str(pdb_path)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if obabel.returncode == 0 and pdb_path.exists():
+            _sanitize_pose_pdb(pdb_path)
+            pose_path = pdb_path
+            pose_format = "pdb"
+
+    return {
+        "pose_id": pose_id,
+        "pose_path": str(pose_path),
+        "pose_format": pose_format,
+    }
+
+
+def _sanitize_pose_pdb(pdb_path: Path) -> None:
+    """Keep a single-model ligand PDB to avoid multi-model parser issues."""
+    try:
+        lines = pdb_path.read_text().splitlines()
+    except Exception:
+        return
+
+    keep = []
+    in_model = False
+    saw_model = False
+    for line in lines:
+        if line.startswith("MODEL"):
+            if saw_model:
+                break
+            saw_model = True
+            in_model = True
+            continue
+        if line.startswith("ENDMDL"):
+            break
+        if line.startswith(("ATOM", "HETATM", "CONECT", "TER")):
+            keep.append(line)
+
+    if not keep:
+        return
+
+    try:
+        pdb_path.write_text("\n".join(keep) + "\nEND\n")
+    except Exception:
+        pass
 
 def _prepare_receptor(pdb_content: str, log) -> str:
     """Convert PDB text to a Vina-compatible receptor PDBQT file.

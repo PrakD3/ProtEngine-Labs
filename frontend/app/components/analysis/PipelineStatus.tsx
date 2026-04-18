@@ -5,32 +5,32 @@ import type { AgentEvent } from "@/app/lib/types";
 
 const AGENTS = [
   // Stage 1: Data Acquisition
-  "MutationParser",
-  "Planner",
-  "Fetch (PubMed/UniProt/PDB/PubChem)",
+  { id: "MutationParser", label: "MutationParser" },
+  { id: "Planner", label: "Planner" },
+  { id: "Fetch", label: "Fetch (PubMed/UniProt/PDB/PubChem)" },
   // Stage 2-3: Structure & Variant Analysis
-  "StructurePrep",
-  "VariantEffect",
+  { id: "StructurePrep", label: "StructurePrep" },
+  { id: "VariantEffect", label: "VariantEffect" },
   // Stage 4-5: Pocket & Molecule Design
-  "PocketDetection",
-  "MoleculeGeneration",
+  { id: "PocketDetection", label: "PocketDetection" },
+  { id: "MoleculeGeneration", label: "MoleculeGeneration" },
   // Stage 6-9: Docking & Safety
-  "Docking",
-  "Selectivity",
-  "ADMET",
-  "LeadOptimization",
+  { id: "Docking", label: "Docking" },
+  { id: "Selectivity", label: "Selectivity" },
+  { id: "ADMET", label: "ADMET" },
+  { id: "LeadOptimization", label: "LeadOptimization" },
   // Stage 10-11: Ranking & Validation
-  "GNNAffinity",
-  "MDValidation",
+  { id: "GNNAffinity", label: "GNNAffinity" },
+  { id: "MDValidation", label: "MDValidation" },
   // Stage 12-14: Context Analysis
-  "Resistance",
-  "Similarity",
-  "Synergy",
+  { id: "Resistance", label: "Resistance" },
+  { id: "Similarity", label: "Similarity" },
+  { id: "Synergy", label: "Synergy" },
   // Stage 15-16: Output Generation
-  "ClinicalTrial",
-  "Synthesis",
-  "Explainability",
-  "Report",
+  { id: "ClinicalTrial", label: "ClinicalTrial" },
+  { id: "Synthesis", label: "Synthesis" },
+  { id: "Explainability", label: "Explainability" },
+  { id: "Report", label: "Report" },
 ];
 
 type AgentStatus = "running" | "complete" | "error" | "waiting";
@@ -70,10 +70,10 @@ export function PipelineStatus({ events, isComplete, startTime }: Props) {
       </div>
       <AnimatePresence>
         {AGENTS.map((agent) => {
-          const status: AgentStatus = statusMap[agent] ?? "waiting";
+          const status: AgentStatus = statusMap[agent.id] ?? "waiting";
           return (
             <motion.div
-              key={agent}
+              key={agent.id}
               layout
               className="flex items-center gap-2 py-1 px-2 rounded text-xs"
               style={{
@@ -101,7 +101,7 @@ export function PipelineStatus({ events, isComplete, startTime }: Props) {
                       : "text-[var(--muted-foreground)]"
                 }
               >
-                {agent}
+                {agent.label}
               </span>
             </motion.div>
           );
