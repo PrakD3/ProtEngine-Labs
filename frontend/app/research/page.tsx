@@ -105,8 +105,6 @@ export default function ResearchPage() {
 
       setIsLocalSuggesting(true);
       setIsOnlineSuggesting(Boolean(trimmed));
-      setLocalSuggestions([]);
-      setOnlineSuggestions([]);
 
       void searchMutations(trimmed, "local")
         .then((nextLocal) => {
@@ -192,8 +190,8 @@ export default function ResearchPage() {
                           <div className="px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-muted-foreground">
                             Local Search
                           </div>
-                          {isLocalSuggesting && (
-                            <div className="px-4 py-2 text-xs text-muted-foreground">
+                          {isLocalSuggesting && localSuggestions.length === 0 && (
+                            <div className="px-4 py-2 text-xs text-muted-foreground animate-pulse">
                               Searching local file...
                             </div>
                           )}
@@ -224,8 +222,8 @@ export default function ResearchPage() {
                           <div className="px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-muted-foreground">
                             Online Search
                           </div>
-                          {isOnlineSuggesting && (
-                            <div className="px-4 py-2 text-xs text-muted-foreground">Searching...</div>
+                          {isOnlineSuggesting && onlineSuggestions.length === 0 && (
+                            <div className="px-4 py-2 text-xs text-muted-foreground animate-pulse">Searching...</div>
                           )}
                           {!isOnlineSuggesting && onlineSuggestions.length === 0 && query.trim() && (
                             <div className="px-4 py-2 text-xs text-muted-foreground">

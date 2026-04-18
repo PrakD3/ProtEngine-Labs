@@ -306,7 +306,15 @@ def _split_query(query: str) -> tuple[str | None, str | None]:
     return tokens[0], None
 
 
-def _build_cosmic_index(path: Path) -> tuple[dict[str, tuple[str, ...]], tuple[str, ...]]:
+    cache_path = path.parent / "cosmic_cache.json"
+    if cache_path.exists():
+        try:
+            data = json.loads(cache_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and "index" in data and "genes" in data:
+                return data["index"], tuple(data["genes"])
+        except Exception:
+            pass
+
     if not path.exists():
         raise FileNotFoundError(f"COSMIC dataset not found at {path}")
 
@@ -326,8 +334,19 @@ def _build_cosmic_index(path: Path) -> tuple[dict[str, tuple[str, ...]], tuple[s
             gene_key = gene.upper()
             index.setdefault(gene_key, set()).add(normalized)
 
-    finalized = {gene: tuple(sorted(muts)) for gene, muts in index.items()}
-    return finalized, tuple(sorted(finalized.keys()))
+    finalized_index = {gene: sorted(list(muts)) for gene, muts in index.items()}
+    finalized_genes = sorted(list(finalized_index.keys()))
+    
+    # Save cache
+    try:
+        cache_path.write_text(json.dumps({
+            "index": finalized_index,
+            "genes": finalized_genes
+        }))
+    except Exception:
+        pass
+
+    return finalized_index, tuple(finalized_genes)
 
 
 async def _get_cosmic_index() -> tuple[dict[str, tuple[str, ...]], tuple[str, ...]]:
@@ -418,8 +437,14 @@ async def search(
     source: Literal["all", "local", "online"] = Query("all"),
 ):
     q = query.strip()
-    local = await _search_local(q, limit)
-    online = await _search_online(q, limit) if q else []
+    online = []
+    local = []
+
+    if source in ("all", "local"):
+        local = await _search_local(q, limit)
+    
+    if q and source in ("all", "online"):
+        online = await _search_online(q, limit)
 
     if source == "local":
         return {"source": "local", "suggestions": local}
