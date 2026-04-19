@@ -87,7 +87,7 @@ export function SiteFooter({ variant = "default" }: SiteFooterProps) {
                       : "text-sm font-semibold leading-none"
                   }
                 >
-                  Drug Discovery AI
+                  ProEngine Labs
                 </p>
                 <p
                   className={

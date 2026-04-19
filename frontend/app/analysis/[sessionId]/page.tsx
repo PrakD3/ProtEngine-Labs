@@ -597,7 +597,7 @@ export default function AnalysisPage({ params }: PageProps) {
         <div className="flex items-center justify-between mb-6">
           <button
             type="button"
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/research")}
             className="flex items-center gap-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
           >
             <ArrowLeft size={14} />

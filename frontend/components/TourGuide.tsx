@@ -3,7 +3,7 @@
 /**
  * TourGuide.tsx
  * ─────────────────────────────────────────────────────────────
- * Pure-frontend spotlight tour for Drug Discovery AI.
+ * Pure-frontend spotlight tour for ProEngine Labs.
  * No LLM calls. Steps are hardcoded content.
  *
  * HOW IT WORKS:
@@ -919,7 +919,7 @@ function WelcomeModal({
             letterSpacing: 0.3,
           }}
         >
-          Welcome to Drug Discovery AI
+          Welcome to ProEngine Labs
         </h2>
 
         <p

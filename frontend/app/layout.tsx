@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Drug Discovery AI",
+  title: "ProEngine Labs",
   description: "Multi-agent precision medicine pipeline for novel drug discovery",
   keywords: ["drug discovery", "AI", "precision medicine", "molecular docking"],
 };

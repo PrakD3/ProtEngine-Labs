@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
 
-app = FastAPI(title="Drug Discovery AI", version="3.0.0", lifespan=lifespan)
+app = FastAPI(title="ProEngine Labs", version="3.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware,
     allow_origins=["*"],  # Allow all origins for development/testing
     allow_methods=["*"],

@@ -2,13 +2,9 @@
 
 import {
   ArrowRight,
-  BarChart3,
   Dna,
-  FlaskConical,
-  Hospital,
+  Loader2,
   Search,
-  Shield,
-  TreePine,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,56 +14,7 @@ import { searchMutations } from "@/app/lib/api";
 
 const DEMO_CHIPS = ["EGFR T790M", "HIV K103N", "BRCA1 5382insC", "TP53 R248W"];
 
-const FEATURES = [
-  {
-    icon: Dna,
-    title: "De Novo Generation",
-    desc: "Generates novel molecules beyond existing databases via scaffold and bioisostere transformations.",
-  },
-  {
-    icon: Shield,
-    title: "Selectivity Dual-Docking",
-    desc: "Scores target binding versus healthy off-target proteins to prioritize safer leads.",
-  },
-  {
-    icon: FlaskConical,
-    title: "ADMET Screening",
-    desc: "Evaluates drug-likeness, PAINS alerts, bioavailability, and toxicity signals before ranking.",
-  },
-  {
-    icon: TreePine,
-    title: "Evolution Tree",
-    desc: "Tracks optimization operations and score deltas across generations of candidate molecules.",
-  },
-  {
-    icon: Hospital,
-    title: "Clinical Trial Matching",
-    desc: "Maps targets and compounds to relevant active trials for translational context.",
-  },
-  {
-    icon: BarChart3,
-    title: "Explainability + Trace",
-    desc: "Captures reasoning sections, metrics, and provider metadata for auditable decisions.",
-  },
-];
 
-const STEPS = [
-  {
-    num: "01",
-    title: "Target Framing",
-    desc: "Parse mutation and gather evidence from literature, protein, structure, and known compounds.",
-  },
-  {
-    num: "02",
-    title: "Lead Discovery",
-    desc: "Generate molecules, dock against target and off-targets, then filter through ADMET and optimization.",
-  },
-  {
-    num: "03",
-    title: "Decision Report",
-    desc: "Produce ranked leads with reasoning trace, resistance forecast, and exportable artifacts.",
-  },
-];
 
 export default function ResearchPage() {
   const router = useRouter();
@@ -143,33 +90,36 @@ export default function ResearchPage() {
     >
       <main className="flex-1">
         <section
-          className="border-b"
-          style={{ borderColor: "var(--border)", background: "var(--muted)" }}
+          className="flex-1 flex flex-col items-center justify-center border-b"
+          style={{ borderColor: "var(--border)", background: "var(--background)" }}
         >
-          <div className="max-w-6xl mx-auto px-6 md:px-16 py-16 md:py-20">
-            <p className="text-sm font-mono tracking-widest uppercase text-primary mb-3">
-              Research
-            </p>
-            <h1 className="text-4xl md:text-6xl font-bold leading-tight mb-5">
-              Pipeline Design And Scientific Rationale
-            </h1>
-            <p className="text-base md:text-lg text-muted-foreground max-w-3xl mb-8">
-              This page contains the detailed research framework: model capabilities, safety
-              strategy, and how each stage contributes to ranked lead recommendations.
-            </p>
-            <div className="max-w-3xl mb-6" data-tour="query-panel">
+          <div className="max-w-4xl w-full mx-auto px-6 md:px-16 py-20 md:py-32">
+            <div className="text-center mb-12">
+              <p className="text-sm font-mono tracking-widest uppercase text-primary mb-3">
+                Discovery Workspace
+              </p>
+              <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-5 tracking-tight">
+                New Drug Discovery Run
+              </h1>
+              <p className="text-base text-muted-foreground max-w-2xl mx-auto">
+                Enter a gene mutation to initiate the 22-agent drug discovery pipeline.
+                Our autonomous system will parse the structure, generate novel candidates, and validate through MD.
+              </p>
+            </div>
+
+            <div className="max-w-3xl mx-auto w-full mb-10" data-tour="query-panel">
               <div className="flex gap-3 mb-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="e.g. EGFR T790M"
+                    placeholder="Search mutation (e.g. EGFR T790M)..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLaunch()}
                     onFocus={() => setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border text-sm outline-none transition-colors bg-input"
+                    className="w-full pl-10 pr-4 py-4 rounded-xl border text-base outline-none transition-all bg-input focus:ring-2 focus:ring-primary/20"
                     style={{
                       borderColor: "var(--border)",
                       color: "var(--foreground)",
@@ -181,18 +131,18 @@ export default function ResearchPage() {
                       localSuggestions.length > 0 ||
                       onlineSuggestions.length > 0) && (
                     <div
-                      className="absolute z-20 mt-2 w-full rounded-xl border shadow-lg overflow-hidden"
+                      className="absolute z-20 mt-2 w-full rounded-xl border shadow-xl overflow-hidden"
                       style={{ borderColor: "var(--border)", background: "var(--card)" }}
                       role="listbox"
                     >
                       <div className="grid md:grid-cols-2">
                         <div className="border-r" style={{ borderColor: "var(--border)" }}>
-                          <div className="px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-muted-foreground">
-                            Local Search
+                          <div className="px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-muted-foreground bg-muted/30">
+                            Local Library
                           </div>
                           {isLocalSuggesting && localSuggestions.length === 0 && (
                             <div className="px-4 py-2 text-xs text-muted-foreground animate-pulse">
-                              Searching local file...
+                              Scanning local dataset...
                             </div>
                           )}
                           {!isLocalSuggesting && localSuggestions.length === 0 && query.trim() && (
@@ -204,26 +154,24 @@ export default function ResearchPage() {
                             <button
                               key={`local-${item}-${index}`}
                               type="button"
-                              className="w-full text-left px-4 py-3 text-sm hover:bg-muted transition-colors"
+                              className="w-full text-left px-4 py-3 text-sm hover:bg-muted transition-colors flex items-center justify-between group"
                               onMouseDown={(event) => event.preventDefault()}
                               onClick={() => {
                                 setQuery(item);
                                 setShowSuggestions(false);
                               }}
                             >
-                              <span className="font-mono text-xs text-muted-foreground mr-2">
-                                Local
-                              </span>
-                              {item}
+                              <span>{item}</span>
+                              <span className="text-[10px] uppercase font-bold text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity">Dataset</span>
                             </button>
                           ))}
                         </div>
                         <div>
-                          <div className="px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-muted-foreground">
-                            Online Search
+                          <div className="px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-muted-foreground bg-muted/30">
+                            Remote Scientific API
                           </div>
                           {isOnlineSuggesting && onlineSuggestions.length === 0 && (
-                            <div className="px-4 py-2 text-xs text-muted-foreground animate-pulse">Searching...</div>
+                            <div className="px-4 py-2 text-xs text-muted-foreground animate-pulse">Fetching...</div>
                           )}
                           {!isOnlineSuggesting && onlineSuggestions.length === 0 && query.trim() && (
                             <div className="px-4 py-2 text-xs text-muted-foreground">
@@ -234,17 +182,15 @@ export default function ResearchPage() {
                             <button
                               key={`online-${item}-${index}`}
                               type="button"
-                              className="w-full text-left px-4 py-3 text-sm hover:bg-muted transition-colors"
+                              className="w-full text-left px-4 py-3 text-sm hover:bg-muted transition-colors flex items-center justify-between group"
                               onMouseDown={(event) => event.preventDefault()}
                               onClick={() => {
                                 setQuery(item);
                                 setShowSuggestions(false);
                               }}
                             >
-                              <span className="font-mono text-xs text-muted-foreground mr-2">
-                                Online
-                              </span>
-                              {item}
+                              <span>{item}</span>
+                              <span className="text-[10px] uppercase font-bold text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">Remote</span>
                             </button>
                           ))}
                         </div>
@@ -256,110 +202,61 @@ export default function ResearchPage() {
                   type="button"
                   onClick={handleLaunch}
                   disabled={isLoading || !query.trim()}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
                   style={{
                     background: "var(--primary)",
                     color: "var(--primary-foreground)",
                   }}
                 >
-                  {isLoading ? "Starting..." : "Launch"}
-                  <ArrowRight className="w-4 h-4" />
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Launching...
+                    </>
+                  ) : (
+                    <>
+                      Start Pipeline
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </button>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs font-medium text-muted-foreground">Try a demo:</span>
                 {DEMO_CHIPS.map((chip) => (
                   <button
                     type="button"
                     key={chip}
                     onClick={() => handleChip(chip)}
                     disabled={isLoading}
-                    className="px-3 py-1 rounded-lg text-xs font-mono border transition-all hover:opacity-80 disabled:opacity-50"
-                    style={{
-                      background: "var(--accent)",
-                      borderColor: "var(--border)",
-                      color: "var(--accent-foreground)",
-                    }}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium border border-border bg-card hover:bg-muted hover:border-primary/30 transition-all disabled:opacity-50"
                   >
                     {chip}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
+
+            <div className="flex flex-col items-center gap-4">
               <button
                 type="button"
                 onClick={() => handleChip("EGFR T790M")}
                 disabled={isLoading}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50"
-                style={{
-                  background: "var(--primary)",
-                  color: "var(--primary-foreground)",
-                }}
+                className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-xl text-sm font-bold bg-zinc-900 text-white hover:bg-black transition-all overflow-hidden"
               >
-                {isLoading ? "Starting..." : "Run EGFR Demo"}
-                <ArrowRight className="w-4 h-4" />
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Dna className="w-5 h-5 text-primary group-hover:rotate-12 transition-transform" />
+                <span>Run Interactive EGFR Tutorial</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
+              
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium border hover:bg-muted transition-colors"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 style={{ borderColor: "var(--border)" }}
               >
-                Back To Landing
+                ← Return to Platform Overview
               </Link>
-            </div>
-          </div>
-        </section>
-
-        <section className="py-16 px-6 md:px-16">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl font-bold mb-8">Core Research Modules</h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              {FEATURES.map(({ icon: Icon, title, desc }) => (
-                <article
-                  key={title}
-                  className="rounded-xl border p-6"
-                  style={{
-                    borderColor: "var(--border)",
-                    background: "var(--card)",
-                  }}
-                >
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
-                    style={{ background: "var(--accent)" }}
-                  >
-                    <Icon className="w-5 h-5" style={{ color: "var(--primary)" }} />
-                  </div>
-                  <h3 className="font-semibold mb-2">{title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="py-16 px-6 md:px-16" style={{ background: "var(--muted)" }}>
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-3xl font-bold mb-10 text-center">Research Flow</h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              {STEPS.map((step) => (
-                <article
-                  key={step.num}
-                  className="rounded-xl border p-6 text-center"
-                  style={{
-                    borderColor: "var(--border)",
-                    background: "var(--background)",
-                  }}
-                >
-                  <div
-                    className="w-12 h-12 rounded-full mx-auto mb-4 border-2 flex items-center justify-center font-bold text-primary"
-                    style={{ borderColor: "var(--primary)" }}
-                  >
-                    {step.num}
-                  </div>
-                  <h3 className="font-semibold mb-2">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground">{step.desc}</p>
-                </article>
-              ))}
             </div>
           </div>
         </section>

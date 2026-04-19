@@ -1,4 +1,4 @@
-# AXONENGINE Frontend — Drug Discovery AI
+# AXONENGINE Frontend — ProEngine Labs
 
 > A modern, professional Next.js + React interface for real-time drug discovery pipeline visualization and results analysis.
 

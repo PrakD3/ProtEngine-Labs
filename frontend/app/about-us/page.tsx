@@ -7,7 +7,7 @@ export default function AboutUsPage() {
         </p>
         <h1 className="text-3xl md:text-4xl font-bold mb-5">Hackfest26 Team 24</h1>
         <p className="text-muted-foreground leading-relaxed mb-8 max-w-3xl">
-          Drug Discovery AI is built by a student team focused on practical, explainable
+          ProEngine Labs is built by a student team focused on practical, explainable
           computational workflows for early-stage therapeutic research.
         </p>
 

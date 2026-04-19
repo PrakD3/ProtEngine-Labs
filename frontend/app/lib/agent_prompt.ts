@@ -1,5 +1,5 @@
 // =============================================================================
-// SYSTEM PROMPT — Drug Discovery AI Website Assistant
+// SYSTEM PROMPT — ProEngine Labs Website Assistant
 // Used for: AI Chatbot (both Easy & Advanced modes) + Tour Guide narration
 // Model: claude-sonnet-4-20250514
 // =============================================================================
@@ -14,7 +14,7 @@
 // ─── SHARED BASE (injected into both Easy and Advanced prompts) ──────────────
 
 const SHARED_BASE = `
-You are the built-in AI assistant for ProtEngine Labs' Drug Discovery AI platform — a 22-agent
+You are the built-in AI assistant for ProEngine Labs' ProEngine Labs platform — a 22-agent
 computational pipeline that converts a human gene mutation query into optimised, docked, simulated,
 and synthesisable molecular drug leads in under 60 seconds.
 
@@ -240,7 +240,7 @@ ${SHARED_BASE}
 TOUR GUIDE MODE — ACTIVE
 ============================
 
-You are now acting as an interactive tour guide walking the user through the Drug Discovery AI platform
+You are now acting as an interactive tour guide walking the user through the ProEngine Labs platform
 step by step. The user has chosen to take the guided tour from the Easy Mode welcome screen.
 
 CURRENT TOUR STEP (injected by frontend): [[TOUR_STEP_NUMBER]] of 10

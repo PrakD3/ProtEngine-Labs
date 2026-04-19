@@ -138,7 +138,7 @@ export default function HomePage() {
             <Dna className="w-5 h-5 text-primary" />
           </div>
           <span className="font-bold tracking-tight text-xl bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">
-            ProtEngine <span className="text-primary/80 font-normal">Labs</span>
+            ProEngine <span className="text-primary/80 font-normal">Labs</span>
           </span>
         </div>
         <div className="hidden md:flex items-center gap-8">
@@ -359,7 +359,7 @@ export default function HomePage() {
            </div>
          </div>
          <div className="mt-32 pt-20 border-t border-white/5 text-zinc-600 text-[10px] font-mono uppercase tracking-[0.5em]">
-            © 2026 AXONENGINE / PROTENGINE LABS · ALL RIGHTS COMPREHENDED
+            © 2026 AXONENGINE / PROENGINE LABS · ALL RIGHTS COMPREHENDED
          </div>
       </section>
     </div>

@@ -9,7 +9,7 @@ export default function TermsAndConditionsPage() {
 
         <section className="space-y-5 text-sm leading-relaxed text-muted-foreground">
           <p>
-            Drug Discovery AI is provided as-is for non-clinical research and educational
+            ProEngine Labs is provided as-is for non-clinical research and educational
             demonstration purposes.
           </p>
           <p>

@@ -297,7 +297,7 @@ function SidebarShellContent({ children, pathname }: { children?: ReactNode; pat
                     <Dna size={16} />
                   </div>
                   <div className="group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-semibold leading-none">Drug Discovery AI</p>
+                    <p className="text-sm font-semibold leading-none">ProEngine Labs</p>
                     <p className="text-xs text-muted-foreground mt-1">Research Workspace</p>
                   </div>
                 </button>
