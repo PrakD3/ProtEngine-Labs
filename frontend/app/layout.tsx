@@ -3,6 +3,7 @@ import "./globals.css";
 import { Geist } from "next/font/google";
 import { Toaster } from "sonner";
 import { AppShell } from "@/app/components/layout/AppShell";
+import { TourWrapper } from "@/app/TourWrapper";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -23,8 +24,10 @@ export default function RootLayout({
     <html lang="en" className={cn("font-sans", geist.variable)}>
       <body className="min-h-screen antialiased">
         <TooltipProvider>
-          <AppShell>{children}</AppShell>
-          <Toaster position="bottom-right" richColors />
+          <TourWrapper>
+            <AppShell>{children}</AppShell>
+            <Toaster position="bottom-right" richColors />
+          </TourWrapper>
         </TooltipProvider>
       </body>
     </html>

@@ -132,6 +132,7 @@ class ReportAgent:
                 "execution_time_ms": state.get("execution_time_ms", 0),
             },
             "knowledge_graph": state.get("knowledge_graph"),
+            "pocket_delta": state.get("pocket_delta"),
             "export_ready": True,
         }
 

@@ -36,6 +36,7 @@ const AGENTS = [
 type AgentStatus = "running" | "complete" | "error" | "waiting" | "skipped";
 
 interface Props {
+  sessionId?: string;
   events: AgentEvent[];
   isComplete: boolean;
   isCancelled?: boolean;
@@ -56,7 +57,7 @@ function mapAgentStatus(status: string): AgentStatus {
   return "waiting";
 }
 
-export function PipelineStatus({ events, isComplete, isCancelled, agentStatuses, startTime }: Props) {
+export function PipelineStatus({ sessionId, events, isComplete, isCancelled, agentStatuses, startTime }: Props) {
   const statusMap: Record<string, AgentStatus> = {};
   if (agentStatuses) {
     for (const [name, status] of Object.entries(agentStatuses)) {
@@ -77,6 +78,11 @@ export function PipelineStatus({ events, isComplete, isCancelled, agentStatuses,
 
   return (
     <div className="space-y-1 p-4 min-h-[620px] rounded-xl border border-[var(--border)] bg-[var(--card)]">
+      {sessionId && (
+        <div className="text-[10px] sm:text-xs font-mono text-[var(--muted-foreground)] mb-3 flex items-center justify-between">
+          <span>Session: {sessionId}</span>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">Pipeline Progress</h3>
         {!isComplete && startTime && (

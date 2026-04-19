@@ -157,7 +157,7 @@ export default function ResearchPage() {
               This page contains the detailed research framework: model capabilities, safety
               strategy, and how each stage contributes to ranked lead recommendations.
             </p>
-            <div className="max-w-3xl mb-6">
+            <div className="max-w-3xl mb-6" data-tour="query-panel">
               <div className="flex gap-3 mb-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

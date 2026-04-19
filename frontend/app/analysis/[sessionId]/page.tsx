@@ -239,6 +239,20 @@ export default function AnalysisPage({ params }: PageProps) {
 
   const hasFinal = Boolean(result?.final_report);
   const isSessionComplete = isComplete || hasFinal;
+
+  useEffect(() => {
+    if (isSessionComplete) {
+      window.dispatchEvent(new CustomEvent("tour:pipeline-complete"));
+    }
+    const handleCheck = () => {
+      if (isSessionComplete) {
+        window.dispatchEvent(new CustomEvent("tour:pipeline-complete"));
+      }
+    };
+    window.addEventListener("tour:check-pipeline", handleCheck);
+    return () => window.removeEventListener("tour:check-pipeline", handleCheck);
+  }, [isSessionComplete]);
+
   const isStopped = isSessionComplete || isCancelled;
   const statusMessage = isCancelled
     ? "Analysis stopped."
@@ -588,9 +602,6 @@ export default function AnalysisPage({ params }: PageProps) {
             New Analysis
           </button>
           <div className="flex items-center gap-3">
-            <span className="text-xs font-mono text-[var(--muted-foreground)]">
-              Session: {sessionId}
-            </span>
             {isSessionComplete && result && !isCancelled && (
               <SaveDiscoveryButton sessionId={sessionId} initialDiscoveryId={result.discovery_id} />
             )}
@@ -618,51 +629,49 @@ export default function AnalysisPage({ params }: PageProps) {
 
         {/* Main layout: sidebar + content */}
         <div className="flex gap-6 xl:gap-8 items-start">
-          {/* Left: pipeline status — hidden when recovering a saved result */}
-          {!isRecovering && (
-            <div className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-20">
-              {!isSessionComplete && (
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-[var(--muted-foreground)]">
-                      {currentAgent || "Starting…"}
-                    </span>
-                    <span className="text-[var(--primary)] font-medium">{Math.round(progress)}%</span>
-                  </div>
-                  <Progress value={progress} />
+          {/* Left: pipeline status */}
+          <div data-tour="pipeline-status" className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-20">
+            {!isSessionComplete && (
+              <div className="mb-3">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-[var(--muted-foreground)]">
+                    {currentAgent || "Starting…"}
+                  </span>
+                  <span className="text-[var(--primary)] font-medium">{Math.round(progress)}%</span>
                 </div>
-              )}
-              <PipelineStatus
-                events={events}
-                isComplete={isSessionComplete}
-                isCancelled={isCancelled}
-                agentStatuses={result?.agent_statuses}
-                startTime={startTimeRef.current}
-              />
-              {!isSessionComplete && !isCancelled && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-3 w-full gap-2"
-                  onClick={handleCancel}
-                  disabled={isCancelling}
-                >
-                  {isCancelling ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Square className="h-4 w-4" />
-                  )}
-                  Stop analysis
-                </Button>
-              )}
-            </div>
-          )}
+                <Progress value={progress} />
+              </div>
+            )}
+            <PipelineStatus
+              sessionId={sessionId}
+              events={events}
+              isComplete={isSessionComplete}
+              isCancelled={isCancelled}
+              agentStatuses={result?.agent_statuses}
+              startTime={startTimeRef.current}
+            />
+            {!isSessionComplete && !isCancelled && (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 w-full gap-2"
+                onClick={handleCancel}
+                disabled={isCancelling}
+              >
+                {isCancelling ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Square className="h-4 w-4" />
+                )}
+                Stop analysis
+              </Button>
+            )}
+          </div>
 
           {/* Right: results */}
           <div className="flex-1 min-w-0">
-            {/* Mobile progress — hidden when recovering */}
-            {!isRecovering && (
-              <div className="lg:hidden mb-4">
+            {/* Mobile progress */}
+            <div className="lg:hidden mb-4">
                 {!isSessionComplete && (
                   <>
                     <div className="flex justify-between text-xs mb-1">
@@ -677,7 +686,6 @@ export default function AnalysisPage({ params }: PageProps) {
                   </>
                 )}
               </div>
-            )}
 
             {/* Loading / recovering */}
             {!isSessionComplete && (
@@ -760,7 +768,7 @@ export default function AnalysisPage({ params }: PageProps) {
 
                   {/* Top Leads */}
                   <TabsContent value="leads">
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <div data-tour="molecule-cards" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                       {report.ranked_leads.slice(0, 5).map((lead: any) => (
                         <MoleculeCard
                           key={lead.smiles}

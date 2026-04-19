@@ -306,6 +306,7 @@ def _split_query(query: str) -> tuple[str | None, str | None]:
     return tokens[0], None
 
 
+def _build_cosmic_index(path: Path) -> tuple[dict[str, tuple[str, ...]], tuple[str, ...]]:
     cache_path = path.parent / "cosmic_cache.json"
     if cache_path.exists():
         try:

@@ -456,10 +456,13 @@ function MainbarShell({ children, borderless }: MainbarShellProps) {
   );
 }
 
+import { AssistantChat } from "@/app/components/ui/AssistantChat";
+
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <SidebarShell>
       <MainbarShell>{children}</MainbarShell>
+      <AssistantChat />
     </SidebarShell>
   );
 }
