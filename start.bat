@@ -1,85 +1,57 @@
 @echo off
 setlocal enabledelayedexpansion
 
-echo 🧬 Drug Discovery AI — Quick Start (Windows)
-echo =============================================
-echo AXONENGINE v4.0 with Advanced ML Features
+echo 🧬 AXONENGINE v4.0 — Enterprise Setup (Windows)
+echo ===============================================
+echo This script launches the AXONENGINE pipeline.
 echo.
 
-:: ── Backend Setup ────────────────────────────────────────────────────────────
+:: --- 1. Environment Check ---
+echo ^> Checking for Python 3.11...
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo ❌ Python not found. Please install Python 3.11 from https://www.python.org/
+    pause
+    exit /b 1
+)
+
+:: --- 2. Backend Setup ---
 echo.
 echo ^> Configuring backend environment...
-
 cd backend
-
 if not exist ".env" (
     copy .env.example .env
-    echo   WARNING: Created backend\.env from .env.example — add your API keys!
+    echo   ⚠️ Created backend\.env - add your API keys!
 )
 
 if not exist ".venv" (
-    echo   Creating Python virtual environment...
+    echo   Creating virtual environment...
     python -m venv .venv
 )
 
 call .venv\Scripts\activate.bat
-
-echo   Installing core Python dependencies...
+echo   Installing packages and fixing dependencies...
 pip install -r requirements.txt -q
+pip install "urllib3<2.0" -q
 
-:: ── COSMIC Dataset Check ───────────────────────────────────────────────────
-set COSMIC_FILE=data\cosmic\cmc_export.tsv
-if not exist "%COSMIC_FILE%" (
-    echo.
-    echo 🔍 COSMIC Search Index missing ^(1.7GB^).
-    set /p download_choice="❓ Would you like to download it now in the background? (y/n): "
-    if /i "!download_choice!"=="y" (
-        echo   ⬇️ Starting download in background... 
-        start /b "COSMIC Downloader" .venv\Scripts\python.exe scripts\get_CosmicSearchIndex.py --download ^> cosmic_download.log 2^>^&1
-    ) else (
-        echo   ⏩ Skipping download. Search will still work using online records.
-    )
-)
-
-:: ── V4 Optional Features ──────────────────────────────────────────────────────
-echo.
-echo 🔬 V4 OPTIONAL ML FEATURES (Enhanced Predictions)
-echo   ^> Checking for optional molecular docking tools...
-
-:: Check for Vina (real docking)
-pip list | findstr /I "vina" >nul 2>&1
-if errorlevel 1 (
-    echo   ⚠ Vina not installed - molecular docking disabled ^(using hash fallback^)
-    echo     Install with: pip install vina meeko
-) else (
-    echo   ✓ Vina found - real docking enabled
-)
-
-:: Check for optional ML features
-echo.
-echo 🤖 Optional ML Model Features ^(slow first run, requires 4GB VRAM^):
-echo    To enable V4 ML features, install: pip install -r requirements-v4.txt
-echo    Features include:
-echo      • ESM-1v variant pathogenicity scoring
-echo      • DimeNet^+^+ GNN affinity prediction
-echo      • Pocket2Mol 3D-conditioned generation
-echo    Set env variable: set ENABLE_V4_ML=1
-echo.
-
-echo   Launching uvicorn on http://localhost:8000 ...
-start "Drug Discovery AI - Backend" cmd /k "call .venv\Scripts\activate.bat && uvicorn main:app --reload --host 0.0.0.0 --port 8000"
-
+echo   Launching backend...
+start "AXONENGINE - Backend" cmd /k "call .venv\Scripts\activate.bat && uvicorn main:app --reload --host 0.0.0.0 --port 8000"
 cd ..
 
-:: ── Frontend ──────────────────────────────────────────────────────────────────
+:: --- 3. Frontend Setup ---
 echo.
-echo ^> Starting frontend...
-
+echo ^> Configuring frontend environment...
 cd frontend
-
 if not exist ".env.local" (
     copy .env.local.example .env.local
-    echo   WARNING: Created frontend\.env.local from .env.local.example
+)
+
+echo ^> Checking for Node.js...
+node -v >nul 2>&1
+if errorlevel 1 (
+    echo ❌ Node.js not found. Please install Node.js v20+ from https://nodejs.org/
+    pause
+    exit /b 1
 )
 
 if not exist "node_modules" (
@@ -87,18 +59,14 @@ if not exist "node_modules" (
     npm install
 )
 
-echo   Launching Next.js on http://localhost:3000 ...
-start "Drug Discovery AI - Frontend" cmd /k "npm run dev"
-
+echo   Launching frontend...
+start "AXONENGINE - Frontend" cmd /k "npm run dev"
 cd ..
 
-:: ── Done ─────────────────────────────────────────────────────────────────────
 echo.
-echo ✅ Both services launching in separate windows:
+echo ✅ AXONENGINE v4.0 Services Starting:
 echo    Frontend ^> http://localhost:3000
 echo    Backend  ^> http://localhost:8000
-echo    API Docs ^> http://localhost:8000/docs
 echo.
-echo Close the backend and frontend windows to stop the servers.
-echo.
+echo Close the separate windows to stop the servers.
 pause
