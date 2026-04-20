@@ -28,54 +28,13 @@ graph TD
     classDef output fill:#f0fdf4,stroke:#15803d,stroke-width:2px,color:#14532d
     classDef start_end fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
 
-    Start([Mutation Query]):::start_end --> Stage1[Stage 1: Multi-Source Acquisition]:::acquisition
-    
-    subgraph S1 [Agents 1-6]
-        Stage1 --> Parser[Mutation Parser]:::acquisition
-        Parser --> Planner[Query Orchestrator]:::acquisition
-        Planner --> Fetch[PubMed + UniProt + RCSB + PubChem]:::acquisition
-    end
-
-    Fetch --> Stage2[Stage 2: Structural Modeling]:::analysis
-    
-    subgraph S2 [Agents 7-9]
-        Stage2 --> ESMF[ESMFold / Protein Prep]:::analysis
-        ESMF --> ESM1v[ESM-1v Pathogenicity]:::analysis
-        ESM1v --> Pock[fpocket Delta Analysis]:::analysis
-    end
-
-    Pock --> Stage3[Stage 3: Generative Design]:::design
-    
-    subgraph S3 [Agents 10-14]
-        Stage3 --> MGen[Pocket2Mol Generative]:::design
-        MGen --> Dock[Vina / Gnina Docking]:::design
-        Dock --> Select[Selectivity Dual-Docking Filter]:::design
-        Select --> Opti[Bioisostere Optimization]:::design
-    end
-
-    Opti --> Stage4[Stage 4: Validation & Physics]:::validation
-    
-    subgraph S4 [Agents 15-17]
-        Stage4 --> GNN[DimeNet++ GNN Filter]:::validation
-        GNN -- "Top 2 Leads Only" --> MDVal[OpenMM 50ns MD]:::validation
-        MDVal --> Resist[Resistance Forecasting]:::validation
-    end
-
-    Resist --> Stage5[Stage 5: Clinical Alignment]:::context
-    
-    subgraph S5 [Agents 18-20]
-        Stage5 --> Trial[ClinicalTrials.gov V2]:::context
-        Trial --> Lit[Knowledge Graph Assembly]:::context
-    end
-
-    Lit --> Stage6[Stage 6: Final Synthesis]:::output
-    
-    subgraph S6 [Agents 21-22]
-        Stage6 --> ASK[ASKCOS Retrosynthesis]:::output
-        ASK --> Rep[Enterprise Report Generation]:::output
-    end
-
-    Rep --> End([Final Drug Report]):::start_end
+    Start([Mutation Query]):::start_end --> Data[Stage 1: Multi-Source Data Acquisition]:::acquisition
+    Data --> Struct[Stage 2: Structural & Variant Analysis]:::analysis
+    Struct --> Design[Stage 3: Generative Molecule Design]:::design
+    Design --> Docking[Stage 4: Docking & Selectivity Filtering]:::design
+    Docking --> Validation[Stage 5: GNN & Molecular Dynamics Validation]:::validation
+    Validation --> Synthesis[Stage 6: ASKCOS Retrosynthesis Planning]:::output
+    Synthesis --> Report([Final Enterprise Drug Report]):::start_end
 ```
 
 ### Key Metrics & Precision
