@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install deps
-        run: pip install -r requirements-dev.txt fastapi uvicorn pydantic python-dotenv
+        run: pip install -r requirements-dev.txt
       - name: Lint with ruff
         run: ruff check . || true
       - name: Type check
