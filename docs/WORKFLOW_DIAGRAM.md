@@ -1,4 +1,4 @@
-# ProtEngine Labs: Pipeline Workflow Diagram
+# ProEngine Labs: Pipeline Workflow Diagram
 
 The following Mermaid diagram traces the entire end-to-end execution of the 22-agent LangGraph drug discovery pipeline. It follows a mutation query sequence from ingestion through molecular dynamics and final report assembly.
 

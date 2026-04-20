@@ -1,10 +1,10 @@
-# AXONENGINE Frontend — ProEngine Labs
+# ProEngine Labs Frontend — ProEngine Labs
 
 > A modern, professional Next.js + React interface for real-time drug discovery pipeline visualization and results analysis.
 
 ## 🎯 Overview
 
-This frontend provides a complete user interface for AXONENGINE v4, a 22-agent AI system that transforms protein mutations into ranked drug candidates with synthesis routes and clinical context.
+This frontend provides a complete user interface for ProEngine Labs v4, a 22-agent AI system that transforms protein mutations into ranked drug candidates with synthesis routes and clinical context.
 
 **Key Features:**
 - ⚡ Real-time SSE streaming of 22-agent pipeline execution
@@ -275,7 +275,7 @@ Shows dual-docking results:
 ```bash
 # .env.local or .env
 NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_APP_NAME=AXONENGINE
+NEXT_PUBLIC_APP_NAME=ProEngine Labs
 NEXT_PUBLIC_ENABLE_ANALYTICS=false
 ```
 
@@ -403,7 +403,7 @@ git push origin main
 
 ## 📝 License
 
-Part of AXONENGINE v4 (Hackfest 2026)
+Part of ProEngine Labs v4 (Hackfest 2026)
 
 ## 🆘 Support
 

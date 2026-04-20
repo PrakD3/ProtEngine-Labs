@@ -1,6 +1,6 @@
-# AXONENGINE v4
+# ProEngine Labs
 
-> **Precision Medicine & Drug Discovery Pipeline**
+> **Precision Medicine & ProEngine Labs Pipeline**
 > A 22-agent AI orchestrator for novel lead discovery, synthesis planning, and clinical validation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-amber.svg)](https://opensource.org/licenses/MIT)
@@ -11,7 +11,7 @@
 
 ## Overview
 
-**AXONENGINE v4** is an enterprise-grade drug discovery pipeline designed to identify, optimize, and validate therapeutic candidates for specific protein mutations (e.g., `EGFR T790M`). 
+**ProEngine Labs** is an enterprise-grade drug discovery pipeline designed to identify, optimize, and validate therapeutic candidates for specific protein mutations (e.g., `EGFR T790M`). 
 
 The system leverages a hierarchical 22-agent architecture to move from mutation parsing to synthesis-ready lead compounds in as little as 90 seconds (standard) to 6 hours (with full Molecular Dynamics validation).
 
@@ -54,7 +54,7 @@ The pipeline employs a sophisticated filtration funnel to optimize computational
 3.  **Molecular Dynamics**: Performs 50ns **OpenMM simulations** on finalists only, calculating precise MM-GBSA binding free energies (ΔG) and RMSD stability.
 
 ### Selectivity & Toxicity Benchmarking
-AXONENGINE dual-docks top leads against a panel of 10+ off-target proteins. This computes a **Selectivity Ratio** (Target Affinity / Off-target Affinity), identifying potential side-effects and ensuring a wide therapeutic window early in the discovery phase.
+ProEngine Labs dual-docks top leads against a panel of 10+ off-target proteins. This computes a **Selectivity Ratio** (Target Affinity / Off-target Affinity), identifying potential side-effects and ensuring a wide therapeutic window early in the discovery phase.
 
 ### Retrosynthetic Feasibility
 Every discovered lead is validated through **ASKCOS** retrosynthesis planning. Candidates are scored by **Synthetic Accessibility (SA)** and mapped to specific reagents and steps, ensuring that the top leads are practical for experimental synthesis.
@@ -97,7 +97,7 @@ The project includes a comprehensive automation script that handles system-level
 ## Project Architecture
 
 ```text
-axonengine/
+proengine/
 ├── backend/            # FastAPI + LangGraph Orchestrator
 │   ├── agents/         # 22 Pipeline Agents
 │   ├── pipeline/       # LangGraph state machine

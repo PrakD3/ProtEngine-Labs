@@ -1,6 +1,6 @@
 <<<<<<< HEAD
 
-# CLAUDE.md — Development Guidelines for AXONENGINE v4
+# CLAUDE.md — Development Guidelines for ProEngine Labs v4
 
 ## Project Context
 
@@ -533,7 +533,7 @@ expect(screen.getByText(/well-known/i)).toBeInTheDocument();
 
 ---
 
-## Integration with AXONENGINE Guidelines
+## Integration with ProEngine Labs Guidelines
 
 **Before writing code:** Use `simplify` to ensure no redundancy  
 **While building UI:** Use `ui-ux-pro-max` for design consistency  
@@ -544,7 +544,7 @@ expect(screen.getByText(/well-known/i)).toBeInTheDocument();
 
 1. Run `simplify` on all code changes
 2. Ensure no warnings from TypeScript
-3. Verify component matches AXONENGINE specs (AGENTS.md, CLAUDE.md)
+3. Verify component matches ProEngine Labs specs (AGENTS.md, CLAUDE.md)
 4. Confirm all scores show uncertainty ranges & disclaimers present
 
 ---
@@ -586,8 +586,8 @@ c:\Projects\HF26-24\
 │   │   └── hooks/               # Custom hooks
 │   └── public/
 └── docs/
-    ├── AXONENGINE_v4_Master_System_Prompt.md
-    └── AXONENGINE_v4_Step_by_Step.md
+    ├── ProEngine Labs_v4_Master_System_Prompt.md
+    └── ProEngine Labs_v4_Step_by_Step.md
 ```
 
 ---
@@ -610,7 +610,7 @@ When you (Claude) encounter ambiguity:
 - `CHANGELOG.md` - Detailed changes log
 - `FRONTEND_INTEGRATION_GUIDE.md` - Frontend development spec
 - `BACKEND_COMPLETION_REPORT.md` - Verification & completion report
-- `AXONENGINE_v4_Master_System_Prompt.md` - Original V4 specification
+- `ProEngine Labs_v4_Master_System_Prompt.md` - Original V4 specification
 - Git commits: `e7bc132`, `9b6f1ca`, `b524493`
 
 ---

@@ -1,8 +1,8 @@
-# AXONENGINE v4 — Agent Architecture & Implementation
+# ProEngine Labs — Agent Architecture & Implementation
 
 ## System Overview
 
-**AXONENGINE** is a 22-agent AI pipeline for drug discovery that takes a protein mutation and returns ranked lead compounds with synthesis routes, binding affinity predictions, and clinical context.
+**ProEngine Labs** is a 22-agent AI pipeline for drug discovery that takes a protein mutation and returns ranked lead compounds with synthesis routes, binding affinity predictions, and clinical context.
 
 **Pipeline Duration:** 90 seconds (no MD) to 6 hours (with MD validation)  
 **Output:** 3-5 synthesizable, patentable, experimentally testable drug candidates
@@ -187,7 +187,7 @@ Experimental synthesis and binding validation required before biological testing
 
 ---
 
-## Integration with AXONENGINE Agent Pipeline
+## Integration with ProEngine Labs Agent Pipeline
 
 **Before implementing agents:** Use `simplify` to avoid redundant logic  
 **While designing agent output:** Use `ui-ux-pro-max` for frontend consistency  
