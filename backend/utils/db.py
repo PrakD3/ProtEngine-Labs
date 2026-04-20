@@ -67,7 +67,7 @@ async def init_db():
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS discoveries (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                session_id TEXT NOT NULL,
+                session_id TEXT NOT NULL UNIQUE,
                 query TEXT NOT NULL,
                 gene TEXT,
                 mutation TEXT,
@@ -120,8 +120,18 @@ async def save_discovery(state: dict) -> str:
                 """
                 INSERT INTO discoveries
                     (id, session_id, query, gene, mutation, top_lead_smiles,
-                     top_lead_score, selectivity_ratio, summary, full_report, langsmith_run_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                     top_lead_score, selectivity_ratio, summary, full_report, langsmith_run_id, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+                ON CONFLICT (session_id) DO UPDATE SET
+                    query = EXCLUDED.query,
+                    gene = EXCLUDED.gene,
+                    mutation = EXCLUDED.mutation,
+                    top_lead_smiles = EXCLUDED.top_lead_smiles,
+                    top_lead_score = EXCLUDED.top_lead_score,
+                    selectivity_ratio = EXCLUDED.selectivity_ratio,
+                    summary = EXCLUDED.summary,
+                    full_report = EXCLUDED.full_report,
+                    created_at = NOW()
                 """,
                 did,
                 state.get("session_id", ""),
@@ -143,6 +153,21 @@ async def save_discovery(state: dict) -> str:
             return ""
 
 
+async def bump_discovery(session_id: str) -> bool:
+    """Update the created_at timestamp of a discovery when it is viewed/updated."""
+    pool = await _get_pool()
+    if not pool:
+        return False
+    async with pool.acquire() as conn:
+        try:
+            await conn.execute(
+                "UPDATE discoveries SET created_at = NOW() WHERE session_id = $1",
+                session_id
+            )
+            return True
+        except Exception:
+            return False
+            
 async def list_discoveries(limit: int = 50) -> list[dict]:
     pool = await _get_pool()
     if not pool:

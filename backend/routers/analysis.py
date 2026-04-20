@@ -38,17 +38,25 @@ async def analyze(req: AnalysisRequest, background_tasks: BackgroundTasks):
 
 @router.post("/cancel/{session_id}")
 async def cancel(session_id: str):
-    from agents.OrchestratorAgent import _sessions, _sse_queues
+    from agents.OrchestratorAgent import _sessions, _sse_queues, _active_tasks
 
     state = _sessions.get(session_id)
     if not state:
         return {"session_id": session_id, "status": "not_found"}
-    if state.get("final_report"):
-        return {"session_id": session_id, "status": "complete"}
+    
+    if state.get("final_report") or state.get("status") == "complete":
+        return {"session_id": session_id, "status": "already_complete"}
 
     state["cancelled"] = True
     state["status"] = "cancelled"
 
+    # Immediately cancel the running asyncio task
+    task = _active_tasks.get(session_id)
+    if task and not task.done():
+        task.cancel()
+        return {"session_id": session_id, "status": "cancellation_requested"}
+
+    # Fallback: if task isn't in registry but queue is alive
     queue = _sse_queues.get(session_id)
     if queue:
         await queue.put(

@@ -9,6 +9,31 @@ router = APIRouter()
 async def get_molecules(session_id: str):
     import agents.OrchestratorAgent  # Import module, not variable
 
+    if session_id == "demo-egfr":
+        return {
+            "session_id": "demo-egfr",
+            "query": "EGFR T790M",
+            "status": "complete",
+            "final_report": {
+                "summary": "High-affinity lead compound identified for EGFR T790M resistance mutation. Lead-1 shows strong binding (-9.2 kcal/mol) and ideal ADMET profile.",
+                "ranked_leads": [
+                    {
+                        "rank": 1,
+                        "compound_name": "PEL-790-X1",
+                        "smiles": "CC1=CC(=C(C=C1)NC2=NC=C(C(=N2)NC3=CC=CC(=C3)S(=O)(=O)C)C)OC",
+                        "binding_energy": -9.2,
+                        "sa_score": 2.4,
+                        "synthesis_cost": 1250,
+                        "synthesis_steps": 4
+                    }
+                ],
+                "metrics": {"execution_time_ms": 42500}
+            },
+            "agent_statuses": {a: "complete" for a in ["MutationParser", "Planner", "Fetch", "StructurePrep", "Docking", "Report"]},
+            "pdb_content": "HEADER    PROTEIN DATA BANK DUMMY CONTENT\nATOM      1  N   ALA A   1      20.123  30.456  40.789  1.00 95.00           N",
+            "confidence_banner": {"tier": "WELL_KNOWN", "plddt": 96.5}
+        }
+
     state = agents.OrchestratorAgent._sessions.get(session_id)
 
     # Not in memory (backend restarted) — try recovering from Neon
@@ -21,6 +46,10 @@ async def get_molecules(session_id: str):
 
     if not state:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    # Bump this discovery to the top of the history list
+    from utils.db import bump_discovery
+    await bump_discovery(session_id)
 
     return {
         "session_id": session_id,

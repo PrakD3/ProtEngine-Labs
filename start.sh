@@ -1,22 +1,32 @@
 #!/bin/bash
 
 # ====================================================================
-# ProtEngine Labs — Enterprise Discovery Pipeline Setup & Launcher
+# ProtEngine Labs — Smart Discovery Pipeline Setup & Launcher
 # ====================================================================
-# This script automates the installation of Miniconda, Python 3.11,
-# Bio-informatics tools (Vina, fpocket, Open Babel), and Node.js.
+# This script handles interactive environment setup and service launch.
 # ====================================================================
 
-set -e # Exit on error
-
-echo "🧬 ProtEngine Labs — Enterprise Setup"
-echo "======================================"
+set -e 
 
 PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 TOOLS_DIR="$PROJECT_ROOT/tools"
+CONFIG_FILE="$PROJECT_ROOT/.setup_config"
 mkdir -p "$TOOLS_DIR"
 
-# --- 1. Detect OS ---
+echo "🧬 ProtEngine Labs — System Intelligence"
+echo "=========================================="
+
+# --- 1. Load/Check Configuration ---
+SKIP_SETUP=false
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+    if [ "$SETUP_COMPLETE" = "true" ]; then
+        echo "✅ Setup already complete. Skipping to launch... (Delete .setup_config to reset)"
+        SKIP_SETUP=true
+    fi
+fi
+
+# --- 2. OS Detection ---
 OS_TYPE="$(uname -s)"
 case "$OS_TYPE" in
     Linux*)     OS="Linux";;
@@ -24,166 +34,121 @@ case "$OS_TYPE" in
     *)          OS="Unknown"; echo "❌ Unsupported OS: $OS_TYPE"; exit 1;;
 esac
 
-echo "🖥️  Detected OS: $OS"
-
-# --- 2. Check/Install Miniconda ---
-CONDA_PATH="$HOME/miniconda3"
-if [ -d "$TOOLS_DIR/miniconda" ]; then
-    CONDA_PATH="$TOOLS_DIR/miniconda"
-fi
-
-if ! command -v conda &> /dev/null && [ ! -f "$CONDA_PATH/bin/conda" ]; then
-    echo "📦 Miniconda not found. Downloading..."
-    if [ "$OS" == "Linux" ]; then
-        CONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
-    else
-        CONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh"
-    fi
+# --- 3. Interactive Setup ---
+if [ "$SKIP_SETUP" = false ]; then
+    # Detect Conda/Mamba
+    CONDA_EXE=$(which mamba || which conda || echo "")
     
-    curl -L "$CONDA_URL" -o "$TOOLS_DIR/miniconda.sh"
-    bash "$TOOLS_DIR/miniconda.sh" -b -p "$TOOLS_DIR/miniconda"
-    rm "$TOOLS_DIR/miniconda.sh"
-    CONDA_PATH="$TOOLS_DIR/miniconda"
-fi
-
-# Initialize Conda for this script
-if [ -f "$CONDA_PATH/bin/conda" ]; then
-    source "$CONDA_PATH/etc/profile.d/conda.sh"
-else
-    # Try global conda
-    CONDA_EXEC=$(which conda || echo "")
-    if [ -n "$CONDA_EXEC" ]; then
-        source "$(dirname "$CONDA_EXEC")/../etc/profile.d/conda.sh"
+    if [ -n "$CONDA_EXE" ]; then
+        echo "🔍 Global environment manager detected: $CONDA_EXE"
+        
+        # Check if current env has required tools
+        TOOLS_MISSING=false
+        command -v vina >/dev/null 2>&1 || TOOLS_MISSING=true
+        command -v fpocket >/dev/null 2>&1 || TOOLS_MISSING=true
+        command -v obabel >/dev/null 2>&1 || TOOLS_MISSING=true
+        
+        if [ "$TOOLS_MISSING" = false ]; then
+            echo "🟢 Bio-informatics tools detected in current path. Systems ready."
+            read -p "❓ Re-verify and install Python dependencies? [y/N]: " REVERIFY
+            [[ ! "$REVERIFY" =~ ^[Yy]$ ]] && SKIP_SETUP=true
+        else
+            echo "⚠️  Bio-informatics tools (Vina/fpocket/OpenBabel) are missing."
+            echo "Options:"
+            echo "  1) Install in CURRENT environment (Active: ${CONDA_DEFAULT_ENV:-base})"
+            echo "  2) Create NEW environment 'protengine'"
+            echo "  3) Skip installation (I will handle it manually)"
+            read -p "Select [1/2/3]: " CHOICE
+            
+            case "$CHOICE" in
+                1) echo "📦 Installing in current environment..."; ENV_NAME="${CONDA_DEFAULT_ENV:-base}";;
+                2) echo "📦 Creating new environment..."; ENV_NAME="protengine"; conda create -y -n "$ENV_NAME" python=3.11;;
+                *) echo "⏭️  Skipping installation."; SKIP_SETUP=true;;
+            esac
+        fi
     fi
 fi
 
-if ! command -v conda &> /dev/null; then
-    echo "❌ Conda installation failed or not found in path."
-    exit 1
-fi
-
-# --- 3. Create/Update Conda Environment ---
-ENV_NAME="protengine"
-echo "🌐 Setting up Conda environment: $ENV_NAME (Python 3.11)"
-
-if ! conda env list | grep -q "$ENV_NAME"; then
-    conda create -y -n "$ENV_NAME" python=3.11
-fi
-
-conda activate "$ENV_NAME"
-
-# --- 4. Install Bio-informatics Tools ---
-echo "🧪 Installing Bio-informatics dependencies (Vina, fpocket, Open Babel)..."
-conda install -y -c conda-forge \
-    vina \
-    fpocket \
-    openbabel \
-    rdkit \
-    numpy \
-    pip \
-    -n "$ENV_NAME"
-
-# --- 5. Install Backend Requirements ---
-echo "python --version"
-python --version
-echo "📦 Installing backend python packages..."
-cd "$PROJECT_ROOT/backend"
-pip install -r requirements.txt
-
-# Fix urllib3 warning immediately if it persists
-pip install "urllib3<2.0"
-
-# --- 6. Check/Install Node.js ---
-cd "$PROJECT_ROOT"
-REQUIRED_NODE=20
-HAS_NODE=false
-
-if command -v node &> /dev/null; then
-    NODE_VER=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$NODE_VER" -ge "$REQUIRED_NODE" ]; then
-        HAS_NODE=true
-        echo "🟢 Node.js $(node -v) detected."
-    fi
-fi
-
-if [ "$HAS_NODE" = false ]; then
-    echo "🟢 Node.js $REQUIRED_NODE+ missing. Installing local Node.js..."
-    # Use nvm-sh/nvm or binary download? Let's use a simple binary extraction for portability
-    NODE_VERSION="20.11.0"
-    if [ "$OS" == "Linux" ]; then
+# --- 4. Core Installation (If not skipped) ---
+if [ "$SKIP_SETUP" = false ]; then
+    echo "🧪 Synchronizing Bio-informatics dependencies..."
+    conda install -y -c conda-forge vina fpocket openbabel rdkit numpy pip -n "${ENV_NAME:-protengine}" || true
+    
+    source "$(dirname "$CONDA_EXE")/../etc/profile.d/conda.sh" || true
+    conda activate "${ENV_NAME:-protengine}" || true
+    
+    echo "📦 Synchronizing backend python packages..."
+    cd "$PROJECT_ROOT/backend"
+    pip install -r requirements.txt -q
+    pip install "urllib3<2.0" -q
+    
+    # Node.js Check
+    cd "$PROJECT_ROOT"
+    if ! command -v node >/dev/null 2>&1; then
+        echo "🟢 Node.js missing. Installing local Node.js v20..."
+        # (Node installation logic is stable, kept from previous version)
+        NODE_VERSION="20.11.0"
         NODE_DIST="node-v$NODE_VERSION-linux-x86_64"
-    else
-        NODE_DIST="node-v$NODE_VERSION-darwin-arm64"
+        [ "$OS" == "MacOS" ] && NODE_DIST="node-v$NODE_VERSION-darwin-arm64"
+        if [ ! -d "$TOOLS_DIR/$NODE_DIST" ]; then
+            curl -L "https://nodejs.org/dist/v$NODE_VERSION/$NODE_DIST.tar.xz" -o "$TOOLS_DIR/node.tar.xz"
+            tar -xJf "$TOOLS_DIR/node.tar.xz" -C "$TOOLS_DIR"
+            rm "$TOOLS_DIR/node.tar.xz"
+        fi
+        export PATH="$TOOLS_DIR/$NODE_DIST/bin:$PATH"
     fi
+
+    echo "🎨 Setting up frontend..."
+    cd "$PROJECT_ROOT/frontend"
+    [ ! -d "node_modules" ] && npm install --silent
     
-    if [ ! -d "$TOOLS_DIR/$NODE_DIST" ]; then
-        echo "⬇️  Downloading Node.js $NODE_VERSION..."
-        curl -L "https://nodejs.org/dist/v$NODE_VERSION/$NODE_DIST.tar.xz" -o "$TOOLS_DIR/node.tar.xz"
-        tar -xJf "$TOOLS_DIR/node.tar.xz" -C "$TOOLS_DIR"
-        rm "$TOOLS_DIR/node.tar.xz"
-    fi
-    export PATH="$TOOLS_DIR/$NODE_DIST/bin:$PATH"
-    echo "🟢 Local Node.js $(node -v) ready."
+    # Save config
+    echo "SETUP_COMPLETE=true" > "$CONFIG_FILE"
+    echo "ENV_NAME=${ENV_NAME:-protengine}" >> "$CONFIG_FILE"
+    echo "✅ Setup finalized and saved."
 fi
 
-# --- 7. Frontend Setup ---
-echo "🎨 Setting up frontend..."
-cd "$PROJECT_ROOT/frontend"
-if [ ! -d "node_modules" ]; then
-    npm install
-fi
-
-# --- 8. Environment Files ---
+# --- 5. Service Launch ---
 cd "$PROJECT_ROOT"
-[ ! -f "backend/.env" ] && cp backend/.env.example backend/.env && echo "⚠️  Created backend/.env - Please add API keys!"
-[ ! -f "frontend/.env.local" ] && cp frontend/.env.local.example frontend/.env.local && echo "⚠️  Created frontend/.env.local"
-
-# --- 9. Launch! ---
 echo "======================================"
 echo "🚀 ProtEngine Labs READY"
 echo "======================================"
 
-# Determine terminal for launching
-TERMINAL=""
-if command -v gnome-terminal &> /dev/null; then TERMINAL="gnome-terminal"
-elif command -v xterm &> /dev/null; then TERMINAL="xterm"
-elif command -v konsole &> /dev/null; then TERMINAL="konsole"
-elif command -v xfce4-terminal &> /dev/null; then TERMINAL="xfce4-terminal"
-fi
+# Persistence check for env activation
+[ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
+ENV_TO_ACTIVATE="${ENV_NAME:-protengine}"
 
-# Launch backend script
+# Ensure run scripts use full paths and logging
 cat > "$TOOLS_DIR/run_backend.sh" << EOF
 #!/bin/bash
-source "$CONDA_PATH/etc/profile.d/conda.sh"
-conda activate "$ENV_NAME"
+source "\$(which conda | sed 's|/bin/conda||')/etc/profile.d/conda.sh" || true
+conda activate "$ENV_TO_ACTIVATE" || echo "⚠️  Env activation failed, trying anyway..."
 cd "$PROJECT_ROOT/backend"
-uvicorn main:app --reload --host 0.0.0.0 --port 7860
+echo "📡 Launching Backend on Port 7860..."
+uvicorn main:app --reload --host 0.0.0.0 --port 7860 2>&1
 EOF
 chmod +x "$TOOLS_DIR/run_backend.sh"
 
-# Launch frontend script
 cat > "$TOOLS_DIR/run_frontend.sh" << EOF
 #!/bin/bash
-export PATH="$TOOLS_DIR/$NODE_DIST/bin:\$PATH"
+export PATH="$TOOLS_DIR/\$(ls \$TOOLS_DIR | grep node-v | head -n 1)/bin:\$PATH"
 cd "$PROJECT_ROOT/frontend"
-npm run dev
+echo "🌐 Launching Frontend on Port 3000..."
+npm run dev 2>&1
 EOF
 chmod +x "$TOOLS_DIR/run_frontend.sh"
 
-if [ -n "$TERMINAL" ]; then
-    echo "🛰️  Launching services in separate terminals..."
-    if [ "$TERMINAL" = "gnome-terminal" ]; then
-        gnome-terminal -- bash -c "$TOOLS_DIR/run_backend.sh" &
-        sleep 2
-        gnome-terminal -- bash -c "$TOOLS_DIR/run_frontend.sh" &
-    elif [ "$TERMINAL" = "xterm" ]; then
-        xterm -e bash "$TOOLS_DIR/run_backend.sh" &
-        xterm -e bash "$TOOLS_DIR/run_frontend.sh" &
-    else
-        # Fallback for others
-        $TERMINAL -e "bash $TOOLS_DIR/run_backend.sh" &
-        $TERMINAL -e "bash $TOOLS_DIR/run_frontend.sh" &
-    fi
+# Determine terminal and launch with 'Hold' flags
+LAUNCH_CMD=""
+if command -v xfce4-terminal >/dev/null 2>&1; then
+    # -H keeps the terminal open after the command exits
+    xfce4-terminal -H --title="ProtEngine Backend" -e "$TOOLS_DIR/run_backend.sh" &
+    sleep 2
+    xfce4-terminal -H --title="ProtEngine Frontend" -e "$TOOLS_DIR/run_frontend.sh" &
+elif command -v gnome-terminal >/dev/null 2>&1; then
+    gnome-terminal --title="ProtEngine Backend" -- bash -c "$TOOLS_DIR/run_backend.sh; exec bash" &
+    sleep 2
+    gnome-terminal --title="ProtEngine Frontend" -- bash -c "$TOOLS_DIR/run_frontend.sh; exec bash" &
 else
     echo "⚠️  No terminal emulator found. Running in background..."
     bash "$TOOLS_DIR/run_backend.sh" &
@@ -191,8 +156,8 @@ else
 fi
 
 echo ""
-echo "📡 Backend: http://localhost:7860"
-echo "🌐 Frontend: http://localhost:3000"
+echo "📡 Backend Status: http://localhost:7860"
+echo "🌐 Frontend Status: http://localhost:3000"
 echo "--------------------------------------"
-echo "Press Ctrl+C in this terminal to exit (NOTE: Background processes may persist)"
+echo "Control-C here to exit this manager."
 wait

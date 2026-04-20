@@ -244,10 +244,37 @@ function SidebarShellContent({ children, pathname }: { children?: ReactNode; pat
             (a, b) =>
               new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           );
-        setRecentDiscoveries(normalized);
+
+        if (normalized.length === 0) {
+          // Dynamic demo injection for Hackathon
+          setRecentDiscoveries([
+            {
+              id: "demo-1",
+              session_id: "demo-egfr",
+              query: "EGFR T790M (Tutorial)",
+              gene: "EGFR",
+              mutation: "T790M",
+              created_at: new Date().toISOString(),
+              status: "complete"
+            } as any
+          ]);
+        } else {
+          setRecentDiscoveries(normalized);
+        }
       } catch {
         if (!isMounted) return;
-        setRecentDiscoveries([]);
+        // Fallback demo on error
+        setRecentDiscoveries([
+          {
+            id: "demo-1",
+            session_id: "demo-egfr",
+            query: "EGFR T790M (Tutorial)",
+            gene: "EGFR",
+            mutation: "T790M",
+            created_at: new Date().toISOString(),
+            status: "complete"
+          } as any
+        ]);
       }
     };
 
@@ -260,12 +287,23 @@ function SidebarShellContent({ children, pathname }: { children?: ReactNode; pat
   }, []);
 
   const discoveryLabel = (discovery: DiscoveryRecord): string => {
-    if (discovery.query?.trim()) return discovery.query.trim();
-    const gene = discovery.gene?.trim();
-    const mutation = discovery.mutation?.trim();
-    if (gene && mutation) return `${gene} ${mutation}`;
-    if (gene) return gene;
-    return "Discovery";
+    let base = "Discovery";
+    if (discovery.query?.trim()) {
+      base = discovery.query.trim();
+    } else {
+      const gene = discovery.gene?.trim();
+      const mutation = discovery.mutation?.trim();
+      if (gene && mutation) base = `${gene} ${mutation}`;
+      else if (gene) base = gene;
+    }
+
+    try {
+      const date = new Date(discovery.created_at);
+      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      return `${base} (${timeStr})`;
+    } catch {
+      return base;
+    }
   };
 
   useEffect(() => {

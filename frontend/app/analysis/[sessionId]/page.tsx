@@ -12,6 +12,7 @@ import { ExportButton } from "@/app/components/analysis/ExportButton";
 import { KnowledgeGraph } from "@/app/components/analysis/KnowledgeGraph";
 import { LangSmithTrace } from "@/app/components/analysis/LangSmithTrace";
 import { MoleculeViewer3D } from "@/app/components/analysis/MoleculeViewer3D";
+import { LiveSimulationView } from "@/app/components/analysis/LiveSimulationView";
 import { MDValidation } from "@/app/components/analysis/MDValidation";
 import { MoleculeCard } from "@/app/components/analysis/MoleculeCard";
 // Components
@@ -690,24 +691,16 @@ export default function AnalysisPage({ params }: PageProps) {
             {!isSessionComplete && (
               <div className="flex justify-start items-center min-h-[60vh]">
                 <div className="w-full max-w-6xl px-2 lg:px-4 py-6">
-                  <div className="flex justify-start py-6">
-                    <Matrix
-                      rows={MATRIX_ROWS}
-                      cols={MATRIX_COLS}
-                      mode="vu"
-                      levels={matrixLevels}
-                      fps={14}
-                      size={17}
-                      gap={5}
-                      palette={{
-                        on: "var(--primary)",
-                        off: "var(--border)",
-                      }}
-                      ariaLabel="analysis signal matrix"
-                      className="text-[var(--primary)]"
+                  <div className="flex justify-start py-6 w-full">
+                    <LiveSimulationView
+                      sessionId={sessionId}
+                      latestState={latestState}
+                      currentAgent={currentAgentId}
+                      progress={progress}
+                      matrixLevels={matrixLevels}
                     />
                   </div>
-                  <div className="text-sm text-[var(--muted-foreground)] text-center">
+                  <div className="text-sm text-[var(--muted-foreground)] text-center mt-4">
                     {isRecovering ? "Loading saved result…" : statusMessage}
                   </div>
                 </div>
@@ -871,24 +864,26 @@ export default function AnalysisPage({ params }: PageProps) {
                                   <td className="p-3 font-mono text-xs max-w-32 truncate">
                                     {s.smiles.slice(0, 20)}…
                                   </td>
-                                  <td className="p-3 text-emerald-600">
+                                  <td className={`p-3 ${typeof targetAffinity === "number" && targetAffinity < 0 ? "text-emerald-500 font-medium" : "text-red-500 font-bold"}`}>
                                     {typeof targetAffinity === "number"
                                       ? targetAffinity.toFixed(2)
                                       : "N/A"}
                                   </td>
-                                  <td className="p-3 text-red-500">
+                                  <td className={`p-3 ${typeof offTargetAffinity === "number" && offTargetAffinity < 0 ? "text-emerald-500/80" : "text-red-500"}`}>
                                     {typeof offTargetAffinity === "number"
                                       ? offTargetAffinity.toFixed(2)
                                       : "N/A"}
                                   </td>
-                                  <td className="p-3 font-medium">
+                                  <td className={`p-3 font-medium ${typeof ddg === "number" && ddg > 0 ? "text-emerald-400" : "text-red-400"}`}>
                                     {typeof ddg === "number"
                                       ? `${ddg > 0 ? "+" : ""}${ddg.toFixed(2)}`
                                       : "N/A"}
                                   </td>
-                                  <td className="p-3 font-bold">
+                                  <td className="p-3 font-bold font-mono text-[10px]">
                                     {typeof ratio === "number"
-                                      ? `${ratio.toFixed(2)}x`
+                                      ? ratio < 0.01 || ratio > 1000
+                                        ? `${ratio.toExponential(2)}x`
+                                        : `${ratio.toFixed(2)}x`
                                       : "N/A"}
                                   </td>
                                 </tr>

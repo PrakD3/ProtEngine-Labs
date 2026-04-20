@@ -171,6 +171,8 @@ export function MoleculeCard({
                 ligandPoseUrl={ligandPoseUrl}
                 ligandPoseFormat={ligandPoseFormat}
                 className="h-32 rounded-lg"
+                lowQuality={true}
+                noSpin={true}
               />
               <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium bg-black/65 text-white opacity-0 group-hover:opacity-100 transition-opacity">
                 <Search size={12} />
