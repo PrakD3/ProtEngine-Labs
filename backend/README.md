@@ -1,5 +1,5 @@
 ---
-title: ProEngine Labs Backend
+title: ProtEngine Labs Backend
 emoji: 🧬
 colorFrom: blue
 colorTo: indigo
@@ -9,9 +9,9 @@ pinned: false
 license: apache-2.0
 ---
 
-# ProEngine Labs Backend
+# ProtEngine Labs Backend
 
-This is the 22-agent AI orchestrator for **ProEngine Labs**.
+This is the 22-agent AI orchestrator for **ProtEngine Labs**.
 
 ## Configuration
 - **SDK**: Docker

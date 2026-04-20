@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
 
         <section className="space-y-5 text-sm leading-relaxed text-muted-foreground">
           <p>
-            ProEngine Labs stores limited session metadata to support analysis workflows,
+            ProtEngine Labs stores limited session metadata to support analysis workflows,
             discovery history, and usability improvements.
           </p>
           <p>

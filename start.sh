@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ====================================================================
-# ProEngine Labs — Enterprise Discovery Pipeline Setup & Launcher
+# ProtEngine Labs — Enterprise Discovery Pipeline Setup & Launcher
 # ====================================================================
 # This script automates the installation of Miniconda, Python 3.11,
 # Bio-informatics tools (Vina, fpocket, Open Babel), and Node.js.
@@ -9,7 +9,7 @@
 
 set -e # Exit on error
 
-echo "🧬 ProEngine Labs — Enterprise Setup"
+echo "🧬 ProtEngine Labs — Enterprise Setup"
 echo "======================================"
 
 PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -63,7 +63,7 @@ if ! command -v conda &> /dev/null; then
 fi
 
 # --- 3. Create/Update Conda Environment ---
-ENV_NAME="proengine"
+ENV_NAME="protengine"
 echo "🌐 Setting up Conda environment: $ENV_NAME (Python 3.11)"
 
 if ! conda env list | grep -q "$ENV_NAME"; then
@@ -140,7 +140,7 @@ cd "$PROJECT_ROOT"
 
 # --- 9. Launch! ---
 echo "======================================"
-echo "🚀 ProEngine Labs READY"
+echo "🚀 ProtEngine Labs READY"
 echo "======================================"
 
 # Determine terminal for launching

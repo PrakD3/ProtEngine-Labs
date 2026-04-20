@@ -3,7 +3,7 @@
 /**
  * TourGuide.tsx
  * ─────────────────────────────────────────────────────────────
- * Pure-frontend spotlight tour for ProEngine Labs.
+ * Pure-frontend spotlight tour for ProtEngine Labs.
  * No LLM calls. Steps are hardcoded content.
  *
  * HOW IT WORKS:
@@ -919,7 +919,7 @@ function WelcomeModal({
             letterSpacing: 0.3,
           }}
         >
-          Welcome to ProEngine Labs
+          Welcome to ProtEngine Labs
         </h2>
 
         <p

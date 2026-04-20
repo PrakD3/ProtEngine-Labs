@@ -1,10 +1,10 @@
-# Project Deep Dive: ProEngine Labs Drug Discovery AI
+# Project Deep Dive: ProtEngine Labs Drug Discovery AI
 
 ---
 
 ## 1. PROJECT IDENTITY
 
-**Project Name:** Drug Discovery AI (by ProEngine Labs)  
+**Project Name:** Drug Discovery AI (by ProtEngine Labs)  
 **Purpose:** A multi-agent precision medicine AI pipeline designed for novel drug discovery. It processes genetic mutations, generates drug candidates, evaluates their efficacy, predicts selectivity, and outputs synthesis routes—all within a fast, 60-second computational process.  
 **One-Line Summary:** A 22-agent AI platform orchestrating biological querying, molecular generation, docking, simulation, and synthesis pathing to discover novel cancer therapeutics from specific gene mutations.  
 **Problem It Solves:** Dramatically reduces the time required to design potential drug candidates for specific genetic mutations (like cancer drug resistance, e.g., EGFR T790M). It integrates structural biology, computational chemistry, docking algorithms, and clinical context into a unified, rapid pipeline.  

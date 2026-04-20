@@ -107,7 +107,7 @@ export function PocketGeometryTab({
             drugs?" This limits innovation to incremental improvements.
           </p>
           <p>
-            AXONENGINE starts with "The pocket changed. How?" This enables
+            ProtEngine Labs starts with "The pocket changed. How?" This enables
             radical innovation—designing molecules that exploit the mutation
             rather than fighting it.
           </p>

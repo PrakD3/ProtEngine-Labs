@@ -61,7 +61,7 @@ def print_health_report():
     status = validate_system()
     
     print("\n" + "="*60)
-    print("AXONENGINE v4 — System Health Check")
+    print("ProtEngine Labs — System Health Check")
     print("="*60)
     
     for tool, available in status.items():

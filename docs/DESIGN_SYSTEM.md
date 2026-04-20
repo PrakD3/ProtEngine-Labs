@@ -1,4 +1,4 @@
-# ProEngine Labs Design System
+# ProtEngine Labs Design System
 
 ## Overview
 

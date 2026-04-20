@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
 
-app = FastAPI(title="ProEngine Labs", version="3.0.0", lifespan=lifespan)
+app = FastAPI(title="ProtEngine Labs", version="3.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware,
     allow_origins=["*"],  # Allow all origins for development/testing
     allow_methods=["*"],
@@ -62,4 +62,4 @@ app.include_router(structure.router,    prefix="/api")
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "service": "ProEngine Labs Backend"}
+    return {"status": "ok", "service": "ProtEngine Labs Backend"}

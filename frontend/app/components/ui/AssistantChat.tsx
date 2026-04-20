@@ -15,7 +15,7 @@ export function AssistantChat() {
   const mode = isEasyMode ? "easy" : "advanced";
   
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hi! I'm your ProEngine Labs assistant. Ask me anything about the pipeline, the science, or the UI." }
+    { role: "assistant", content: "Hi! I'm your ProtEngine Labs assistant. Ask me anything about the pipeline, the science, or the UI." }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);

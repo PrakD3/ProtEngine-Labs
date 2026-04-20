@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: proengine-backend
+    name: protengine-backend
     env: docker
     dockerContext: backend
     dockerfilePath: Dockerfile

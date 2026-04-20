@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
-echo 🧬 ProEngine Labs — Enterprise Setup (Windows)
+echo 🧬 ProtEngine Labs — Enterprise Setup (Windows)
 echo ===============================================
-echo This script launches the ProEngine Labs pipeline.
+echo This script launches the ProtEngine Labs pipeline.
 echo.
 
 :: --- 1. Environment Check ---
@@ -35,7 +35,7 @@ pip install -r requirements.txt -q
 pip install "urllib3<2.0" -q
 
 echo   Launching backend...
-start "ProEngine Labs - Backend" cmd /k "call .venv\Scripts\activate.bat && uvicorn main:app --reload --host 0.0.0.0 --port 7860"
+start "ProtEngine Labs - Backend" cmd /k "call .venv\Scripts\activate.bat && uvicorn main:app --reload --host 0.0.0.0 --port 7860"
 cd ..
 
 :: --- 3. Frontend Setup ---
@@ -60,11 +60,11 @@ if not exist "node_modules" (
 )
 
 echo   Launching frontend...
-start "ProEngine Labs - Frontend" cmd /k "npm run dev"
+start "ProtEngine Labs - Frontend" cmd /k "npm run dev"
 cd ..
 
 echo.
-echo ✅ ProEngine Labs Services Starting:
+echo ✅ ProtEngine Labs Services Starting:
 echo    Frontend ^> http://localhost:3000
 echo    Backend  ^> http://localhost:7860
 echo.

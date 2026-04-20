@@ -1,4 +1,4 @@
-# ProEngine Labs Backend - Production Dockerfile
+# ProtEngine Labs Backend - Production Dockerfile
 FROM condaforge/mambaforge:latest
 
 WORKDIR /app

@@ -27,7 +27,7 @@ async def export(session_id: str, format: str = "json"):
         for i, mol in enumerate(docking[:10]):
             smi = mol.get("smiles", "")
             lines.append(f"Compound_{i + 1}")
-            lines.append("  ProEngine Labs     3D")
+            lines.append("  ProtEngine Labs     3D")
             lines.append("")
             lines.append("  0  0  0  0  0  0  0  0  0  0999 V2000")
             lines.append("M  END")
@@ -48,7 +48,7 @@ async def export(session_id: str, format: str = "json"):
             buf = io.BytesIO()
             c = canvas.Canvas(buf, pagesize=A4)
             c.setFont("Helvetica-Bold", 16)
-            c.drawString(72, 800, "ProEngine Labs — Report")
+            c.drawString(72, 800, "ProtEngine Labs — Report")
             c.setFont("Helvetica", 12)
             report = state.get("final_report", {})
             c.drawString(72, 780, f"Query: {state.get('query', '')}")
