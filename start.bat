@@ -27,6 +27,20 @@ call .venv\Scripts\activate.bat
 echo   Installing core Python dependencies...
 pip install -r requirements.txt -q
 
+:: ── COSMIC Dataset Check ───────────────────────────────────────────────────
+set COSMIC_FILE=data\cosmic\cmc_export.tsv
+if not exist "%COSMIC_FILE%" (
+    echo.
+    echo 🔍 COSMIC Search Index missing ^(1.7GB^).
+    set /p download_choice="❓ Would you like to download it now in the background? (y/n): "
+    if /i "!download_choice!"=="y" (
+        echo   ⬇️ Starting download in background... 
+        start /b "COSMIC Downloader" .venv\Scripts\python.exe scripts\get_CosmicSearchIndex.py --download ^> cosmic_download.log 2^>^&1
+    ) else (
+        echo   ⏩ Skipping download. Search will still work using online records.
+    )
+)
+
 :: ── V4 Optional Features ──────────────────────────────────────────────────────
 echo.
 echo 🔬 V4 OPTIONAL ML FEATURES (Enhanced Predictions)

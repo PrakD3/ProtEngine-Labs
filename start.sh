@@ -40,6 +40,20 @@ source .venv/bin/activate
 echo "Installing backend dependencies..."
 pip install -q -r requirements.txt 2>/dev/null || pip install -r requirements.txt
 
+# COSMIC Dataset Check
+COSMIC_FILE="data/cosmic/cmc_export.tsv"
+if [ ! -f "$COSMIC_FILE" ]; then
+    echo ""
+    echo "🔍 COSMIC Search Index missing (1.7GB)."
+    read -p "❓ Would you like to download it now in the background? (y/n): " download_choice
+    if [[ "$download_choice" =~ ^[Yy]$ ]]; then
+        echo "⬇️ Starting download in background... Search will become available once finished."
+        python3 scripts/get_CosmicSearchIndex.py --download > cosmic_download.log 2>&1 &
+    else
+        echo "⏩ Skipping download. Search will still work using online records."
+    fi
+fi
+
 echo ""
 echo "🚀 Backend Starting..."
 echo "📡 API: http://localhost:8000"

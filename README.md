@@ -111,6 +111,16 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_APP_NAME="Drug Discovery AI"
 ```
 
+### Local Search Index (COSMIC)
+
+The backend includes a high-performance local search index powered by the COSMIC Cancer Mutation Census.
+
+1.  **Instant Search**: The core index is shared via `backend/data/cosmic/cosmic_cache.json`. This 34MB file is tracked in Git, so search works out of the box for all teammates.
+2.  **Full Dataset**: The source 1.7GB TSV is ignored by Git. To update the index or rebuild the cache:
+    - Download the CMC export from [COSMIC](https://cancer.sanger.ac.uk/cosmic/download).
+    - Place it in `backend/data/cosmic/cmc_export.tsv`.
+    - Run `./backend/scripts/setup_cosmic.sh` to verify.
+
 ---
 
 ## 🧪 Tech Stack

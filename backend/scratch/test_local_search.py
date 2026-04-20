@@ -10,7 +10,7 @@ async def test_search():
     from routers.search import _search_local
     print("Testing local search for 'EGFR'...")
     try:
-        results = await _search_local("EGFR", 10)
+        results = await _search_local("EGFR", 1000000)
         print(f"Results: {results}")
     except Exception as e:
         print(f"Error: {e}")

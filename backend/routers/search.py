@@ -14,13 +14,7 @@ router = APIRouter()
 
 _DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 _CBIOPORTAL_BASE_URL = os.getenv("CBIOPORTAL_API_URL", "https://www.cbioportal.org/api")
-_DEFAULT_COSMIC_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "search"
-    / "CancerMutationCensus_AllData_Tsv_v103_GRCh37"
-    / "CancerMutationCensus_AllData_v103_GRCh37.tsv"
-    / "cmc_export.tsv"
-)
+_DEFAULT_COSMIC_PATH = _DATA_DIR / "cosmic" / "cmc_export.tsv"
 
 
 def _load_json(path: Path):
@@ -359,9 +353,14 @@ async def _get_cosmic_index() -> tuple[dict[str, tuple[str, ...]], tuple[str, ..
 
     async with _COSMIC_LOCK:
         if _COSMIC_INDEX is None:
-            index, genes = await asyncio.to_thread(_build_cosmic_index, _cosmic_path())
-            _COSMIC_INDEX = index
-            _COSMIC_GENES = genes
+            try:
+                index, genes = await asyncio.to_thread(_build_cosmic_index, _cosmic_path())
+                _COSMIC_INDEX = index
+                _COSMIC_GENES = genes
+            except Exception as e:
+                # Silently fail if dataset is missing or broken, allowing online search to continue
+                _COSMIC_INDEX = {}
+                _COSMIC_GENES = ()
 
     return _COSMIC_INDEX or {}, _COSMIC_GENES
 
