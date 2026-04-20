@@ -73,3 +73,4 @@ yarn-error.log*
 # ─── Misc ───────────────────────────────────────────────────────────────────
 *.pem
 /tmp/dda_structures/
+backend/data/cosmic/cosmic_cache.json
