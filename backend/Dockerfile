@@ -10,7 +10,12 @@ RUN mamba install -y -c conda-forge \
     fpocket \
     openbabel \
     rdkit \
+    wget \
     && mamba clean -afy
+
+# Install Gnina binary (Deep Learning Scoring Engine)
+RUN wget https://github.com/gnina/gnina/releases/download/v1.1/gnina -O /usr/local/bin/gnina && \
+    chmod +x /usr/local/bin/gnina
 
 # Copy requirements
 COPY requirements.txt .
