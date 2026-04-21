@@ -133,6 +133,9 @@ class ReportAgent:
             },
             "knowledge_graph": state.get("knowledge_graph"),
             "pocket_delta": state.get("pocket_delta"),
+            "synthesis_routes": state.get("synthesis_routes", []),
+            "sa_scores": state.get("sa_scores", []),
+            "synthesis_feasibility": state.get("synthesis_feasibility", "Analysis pending"),
             "export_ready": True,
         }
 

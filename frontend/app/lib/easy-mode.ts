@@ -29,6 +29,8 @@ export const EASY_MODE_MAP: Record<string, string> = {
   "Discoveries": "Saved Library",
   "Starting Molecule": "Base Molecule",
   "Variation": "Change",
+  "Steps": "Complexity",
+  "Est. Cost": "Typical Cost",
 
   // Technical Units/Methods
   "kcal/mol": "Energy Units",

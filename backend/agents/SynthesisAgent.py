@@ -47,25 +47,35 @@ class SynthesisAgent:
             - sa_scores: synthetic accessibility scores
             - synthesis_feasibility: assessment of ease
         """
-        plan = state.get("analysis_plan")
-        if not getattr(plan, "run_report", True):
+        plan = state.get("analysis_plan", {})
+        run_report = True
+        if isinstance(plan, dict):
+            run_report = plan.get("run_report", True)
+        else:
+            run_report = getattr(plan, "run_report", True)
+            
+        if not run_report:
             return {}
 
         md_results = state.get("md_results", [])
         finalists = state.get("top_2_finalists", [])
+        docking_leads = state.get("docking_results", [])
+        ranked_leads = state.get("ranked_leads", [])
 
-        if not md_results and not finalists:
+        if not md_results and not finalists and not docking_leads and not ranked_leads:
             return {
                 "synthesis_routes": [],
                 "sa_scores": [],
                 "synthesis_feasibility": "No molecules to synthesize",
             }
 
-        # Synthesize all validated molecules
+        # Synthesize all validated molecules (prefer MD > GNN > Docking)
         synthesis_routes = []
         sa_scores = []
 
-        molecules_to_synthesize = md_results or finalists
+        molecules_to_synthesize = md_results or finalists or docking_leads or ranked_leads
+        # Cap at 3 molecules to prevent pipeline bloat
+        molecules_to_synthesize = molecules_to_synthesize[:3]
         for i, molecule in enumerate(molecules_to_synthesize):
             smiles = molecule.get("smiles", "")
             if not smiles:

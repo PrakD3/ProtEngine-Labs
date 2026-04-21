@@ -52,7 +52,9 @@ export function SynthesisRoute({
       <div className="grid grid-cols-3 gap-3">
         {numSteps !== undefined && (
           <div className="p-3 rounded-lg bg-[var(--muted)]/40 border border-[var(--border)]/50">
-            <div className="text-xs text-[var(--muted-foreground)] mb-1">Steps</div>
+            <div className="text-xs text-[var(--muted-foreground)] mb-1">
+              {simplifyTerm("Steps", isEasyMode)}
+            </div>
             <div className="text-2xl font-bold">{numSteps}</div>
             <div className="text-xs text-[var(--muted-foreground)] mt-1">
               {numSteps <= 3 ? "Rapid" : numSteps <= 5 ? "Standard" : "Complex"}
@@ -72,20 +74,11 @@ export function SynthesisRoute({
           <div className="p-3 rounded-lg bg-[var(--muted)]/40 border border-[var(--border)]/50">
             <div className="text-xs text-[var(--muted-foreground)] mb-1 flex items-center gap-1">
               <DollarSign size={12} />
-              Est. Cost
+              {simplifyTerm("Est. Cost", isEasyMode)}
             </div>
             <div className="text-sm font-bold truncate">{estimatedCost}</div>
           </div>
         )}
-      </div>
-
-      <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-3">
-        <div className="flex items-start gap-2">
-          <AlertCircle size={14} className="mt-0.5 text-blue-600 dark:text-blue-400 shrink-0" />
-          <p className="text-xs text-blue-700 dark:text-blue-400">
-            {simplifyText("Synthesis route planned with ASKCOS retrosynthesis. All reagents and intermediates are purchasable or easily derived from commercial materials.", isEasyMode)}
-          </p>
-        </div>
       </div>
     </div>
   );

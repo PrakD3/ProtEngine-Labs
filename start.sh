@@ -86,7 +86,6 @@ if [ "$SKIP_SETUP" = false ]; then
     cd "$PROJECT_ROOT"
     if ! command -v node >/dev/null 2>&1; then
         echo "🟢 Node.js missing. Installing local Node.js v20..."
-        # (Node installation logic is stable, kept from previous version)
         NODE_VERSION="20.11.0"
         NODE_DIST="node-v$NODE_VERSION-linux-x86_64"
         [ "$OS" == "MacOS" ] && NODE_DIST="node-v$NODE_VERSION-darwin-arm64"
@@ -100,7 +99,7 @@ if [ "$SKIP_SETUP" = false ]; then
 
     echo "🎨 Setting up frontend..."
     cd "$PROJECT_ROOT/frontend"
-    [ ! -d "node_modules" ] && npm install --silent
+    npm install --no-audit --no-fund --silent
     
     # Save config
     echo "SETUP_COMPLETE=true" > "$CONFIG_FILE"
@@ -131,7 +130,10 @@ chmod +x "$TOOLS_DIR/run_backend.sh"
 
 cat > "$TOOLS_DIR/run_frontend.sh" << EOF
 #!/bin/bash
-export PATH="$TOOLS_DIR/\$(ls \$TOOLS_DIR | grep node-v | head -n 1)/bin:\$PATH"
+NODE_BIN_DIR=\$(ls \$TOOLS_DIR | grep node-v | head -n 1)
+if [ -n "\$NODE_BIN_DIR" ]; then
+  export PATH="\$TOOLS_DIR/\$NODE_BIN_DIR/bin:\$PATH"
+fi
 cd "$PROJECT_ROOT/frontend"
 echo "🌐 Launching Frontend on Port 3000..."
 npm run dev 2>&1
