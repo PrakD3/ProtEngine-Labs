@@ -747,6 +747,7 @@ export default function AnalysisPage({ params }: PageProps) {
                     <TabsTrigger value="docking" data-tour="docking-tab">{simplifyTerm("Docking", isEasyMode)}</TabsTrigger>
                     <TabsTrigger value="pocket">{simplifyTerm("Pocket Geometry", isEasyMode)}</TabsTrigger>
                     <TabsTrigger value="selectivity">{simplifyTerm("Selectivity", isEasyMode)}</TabsTrigger>
+                    <TabsTrigger value="gnina">{simplifyTerm("Gnina", isEasyMode)}</TabsTrigger>
                     <TabsTrigger value="evolution">{simplifyTerm("Evolution Tree", isEasyMode)}</TabsTrigger>
                     <TabsTrigger value="admet">{simplifyTerm("ADMET", isEasyMode)}</TabsTrigger>
                     <TabsTrigger value="md">{simplifyTerm("Molecular Dynamics", isEasyMode)}</TabsTrigger>
@@ -896,6 +897,65 @@ export default function AnalysisPage({ params }: PageProps) {
                             No selectivity data.
                           </p>
                         )}
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Gnina AI */}
+                  <TabsContent value="gnina">
+                    <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+                      <div className="p-4 bg-[var(--muted)] border-b border-[var(--border)]">
+                        <h3 className="font-semibold text-sm">Gnina CNN Analysis</h3>
+                        <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                          Deep learning validation of docking poses. CNN Score represents model confidence (0-1), 
+                          while CNN Affinity is the AI-predicted binding energy.
+                        </p>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-[var(--muted)]/50">
+                            <tr>
+                              <th className="p-3 text-left font-medium">Rank</th>
+                              <th className="p-3 text-left font-medium">Compound</th>
+                              <th className="p-3 text-left font-medium">{simplifyTerm("AI Verification", isEasyMode)}</th>
+                              <th className="p-3 text-left font-medium">{simplifyTerm("Deep Learning Affinity", isEasyMode)}</th>
+                              <th className="p-3 text-left font-medium">{simplifyTerm("Vina Energy", isEasyMode)}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--border)]/50">
+                            {[...(result.docking_results || [])]
+                              .sort((a, b) => (b.cnn_score || 0) - (a.cnn_score || 0))
+                              .map((mol, idx) => (
+                                <tr key={mol.smiles} className="hover:bg-[var(--muted)]/30">
+                                  <td className="p-3 text-[var(--muted-foreground)]">{idx + 1}</td>
+                                  <td className="p-3 font-medium">
+                                    <div className="flex flex-col">
+                                      <span>{mol.compound_name}</span>
+                                      <span className="text-[10px] font-mono opacity-50 truncate max-w-[200px]">
+                                        {mol.smiles}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`h-2 w-2 rounded-full ${
+                                        (mol.cnn_score ?? 0) > 0.7 ? "bg-emerald-500" : (mol.cnn_score ?? 0) > 0.4 ? "bg-amber-500" : "bg-red-500"
+                                      }`} />
+                                      <span className="font-bold">
+                                        {mol.cnn_score ? `${(mol.cnn_score * 100).toFixed(1)}%` : "N/A"}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="p-3 font-mono">
+                                    {mol.cnn_affinity ? `${mol.cnn_affinity.toFixed(2)} kcal/mol` : "N/A"}
+                                  </td>
+                                  <td className="p-3 font-mono opacity-70">
+                                    {mol.binding_energy ? `${mol.binding_energy.toFixed(2)} kcal/mol` : "N/A"}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   </TabsContent>

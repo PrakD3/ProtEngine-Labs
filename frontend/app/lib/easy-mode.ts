@@ -31,6 +31,9 @@ export const EASY_MODE_MAP: Record<string, string> = {
   "Variation": "Change",
   "Steps": "Complexity",
   "Est. Cost": "Typical Cost",
+  "AI Verification": "AI Accuracy Check",
+  "Deep Learning Affinity": "AI Grip Estimate",
+  "Gnina": "Gnina AI",
 
   // Technical Units/Methods
   "kcal/mol": "Energy Units",

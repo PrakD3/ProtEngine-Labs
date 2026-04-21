@@ -65,6 +65,8 @@ export interface DockingResult {
   pose_id?: string | null;
   pose_format?: string | null;
   mol_image_b64?: string;
+  cnn_score?: number | null;
+  cnn_affinity?: number | null;
 }
 
 export interface SelectivityResult {
@@ -237,6 +239,8 @@ export interface RankedLead {
   resistance_flag: boolean;
   mol_image_b64: string;
   clinical_trials_count: number;
+  cnn_score?: number | null;
+  cnn_affinity?: number | null;
 }
 
 export interface PipelineMetrics {
