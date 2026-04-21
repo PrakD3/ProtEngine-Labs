@@ -1,4 +1,4 @@
-# ProtEngine Labs Backend - Production Dockerfile
+# ProtEngine Labs - Production Dockerfile
 FROM condaforge/mambaforge:latest
 
 WORKDIR /app
@@ -10,16 +10,24 @@ RUN mamba install -y -c conda-forge \
     fpocket \
     openbabel \
     rdkit \
+    wget \
     && mamba clean -afy
 
-# Copy requirements
-COPY requirements.txt .
+# Install Gnina binary (Deep Learning Scoring Engine)
+RUN wget https://github.com/gnina/gnina/releases/download/v1.1/gnina -O /usr/local/bin/gnina && \
+    chmod +x /usr/local/bin/gnina
+
+# Copy backend requirements
+COPY backend/requirements.txt ./backend/
 
 # Install python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# Copy source code
+# Copy entire project
 COPY . .
+
+# Set working directory to backend for the start command
+WORKDIR /app/backend
 
 # Expose port
 EXPOSE 7860
