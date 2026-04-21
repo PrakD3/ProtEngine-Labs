@@ -28,14 +28,30 @@ class MutationParserAgent:
         query = state.get("query", "")
         ctx, provider = await self._llm_extract(query)
         if not ctx:
-            ctx = self._regex_extract(query)
-            provider = provider or "regex"
-        # NO CURATED FALLBACK - fetch everything from real APIs only
+          ctx = self._regex_extract(query)
+          provider = provider or "regex"
+        
+        # New: Parse the variant string into chemical components
+        if ctx.get("mutation"):
+            variant_bits = self._parse_variant_string(ctx["mutation"])
+            ctx.update(variant_bits)
+            
         return {
             "mutation_context": ctx,
-            "curated_profile": None,  # Always None - force real API calls
+            "curated_profile": None,
             "llm_provider_used": provider or "unknown",
         }
+
+    def _parse_variant_string(self, variant: str) -> dict:
+        """Breaks 'T790M' into {wt_aa: T, mut_aa: M, position: 790}."""
+        match = re.match(r"([A-Z])(\d+)([A-Z])", variant, re.IGNORECASE)
+        if match:
+            return {
+                "wt_aa": match.group(1).upper(),
+                "position": int(match.group(2)),
+                "mut_aa": match.group(3).upper()
+            }
+        return {}
 
     async def _llm_extract(self, query: str) -> tuple[dict | None, str | None]:
         try:

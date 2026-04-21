@@ -26,36 +26,7 @@ export function PocketGeometryAnalysis({
     return { label: "Minimal", color: "text-gray-500" };
   };
 
-  const getDesignImplications = () => {
-    const implications: string[] = [];
-
-    if (volumeDelta && volumeDelta > 30) {
-      implications.push("✓ Larger aromatic rings or bulkier substituents will fit the expanded pocket");
-    }
-    if (volumeDelta && volumeDelta < -30) {
-      implications.push("✓ More compact structures are required to avoid clashes");
-    }
-
-    if (hydrophobicityDelta && hydrophobicityDelta < -0.2) {
-      implications.push(isEasyMode ? "✓ Better for water-attracting groups" : "✓ More polar groups (NH, OH) will engage with newly hydrophilic pocket");
-    }
-    if (hydrophobicityDelta && hydrophobicityDelta > 0.2) {
-      implications.push(isEasyMode ? "✓ Better for oily/greasy groups" : "✓ More lipophilic substituents (CF3, phenyl) will fill hydrophobic regions");
-    }
-
-    if (polarityDelta && polarityDelta > 0.1) {
-      implications.push("✓ H-bond donors/acceptors are now more favorable");
-    }
-
-    if (implications.length === 0) {
-      implications.push("✓ Subtle geometrical changes require careful structure optimization");
-    }
-
-    return implications;
-  };
-
   const volumeTrend = getVolumeTrend(volumeDelta);
-  const implications = getDesignImplications();
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-4">
@@ -124,22 +95,6 @@ export function PocketGeometryAnalysis({
         )}
       </div>
 
-      <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-4">
-        <p className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
-          💡 Why These Molecules Were Designed
-        </p>
-        <ul className="space-y-1">
-          {implications.map((impl, idx) => (
-            <li key={idx} className="text-xs text-blue-800 dark:text-blue-200">
-              {impl}
-            </li>
-          ))}
-        </ul>
-        <p className="text-xs text-blue-700 dark:text-blue-400 mt-3 border-t border-blue-500/20 pt-2">
-          The generated molecules were specifically designed to fit the mutant pocket geometry rather than 
-          copy existing drugs. Each structural feature targets a specific geometric or chemical change.
-        </p>
-      </div>
     </div>
   );
 }

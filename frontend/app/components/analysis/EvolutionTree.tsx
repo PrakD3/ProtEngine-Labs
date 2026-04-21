@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useModeStore } from "@/components/ModeToggle";
 import { simplifyTerm } from "@/app/lib/easy-mode";
@@ -134,7 +135,7 @@ export function EvolutionTree({ tree }: Props) {
   return (
     <div className="overflow-x-auto p-4">
       {/* Scrollable canvas */}
-      <div ref={containerRef} className="relative inline-flex gap-10 items-start min-w-max pb-2">
+      <div ref={containerRef} className="relative inline-flex gap-24 items-start min-w-max pb-2 pt-4">
         {/* SVG edge layer */}
         <svg
           className="absolute inset-0 pointer-events-none overflow-visible"
@@ -181,7 +182,7 @@ export function EvolutionTree({ tree }: Props) {
 
         {/* Generation columns */}
         {generations.map((gen) => (
-          <div key={gen} className="flex flex-col items-center gap-3 z-10">
+          <div key={gen} className="flex flex-col items-center gap-6 z-10">
             {/* Column header */}
             <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)] whitespace-nowrap">
               {gen === 0 ? simplifyTerm("Starting Molecule", isEasyMode) : `${simplifyTerm("Variation", isEasyMode)} ${gen}`}
@@ -189,12 +190,17 @@ export function EvolutionTree({ tree }: Props) {
 
             {/* Node cards */}
             {nodesByGen[gen].map((node) => (
-              <div
+              <motion.div
                 key={node.id}
-                ref={(el) => {
+                drag
+                dragMomentum={false}
+                onDrag={recalcPaths}
+                onDragStart={recalcPaths}
+                onDragEnd={recalcPaths}
+                ref={(el: any) => {
                   nodeRefs.current[node.id] = el;
                 }}
-                className="w-44 rounded-lg border p-3 text-xs space-y-2 transition-shadow hover:shadow-md cursor-default select-none"
+                className="w-48 rounded-lg border p-3 text-xs space-y-2 transition-shadow hover:shadow-xl cursor-grab active:cursor-grabbing select-none"
                 style={{
                   background: "var(--card)",
                   borderColor: node.admet_pass
@@ -203,7 +209,7 @@ export function EvolutionTree({ tree }: Props) {
                 }}
               >
                 {/* Score + ADMET row */}
-                <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center justify-between gap-1 pointer-events-none">
                   <span
                     className="font-bold text-sm tabular-nums leading-none"
                     style={{ color: scoreColor(node.score) }}
@@ -230,7 +236,7 @@ export function EvolutionTree({ tree }: Props) {
 
                 {/* SMILES snippet */}
                 <p
-                  className="font-mono text-[10px] text-[var(--muted-foreground)] truncate"
+                  className="font-mono text-[10px] text-[var(--muted-foreground)] truncate pointer-events-none"
                   title={node.smiles}
                 >
                   {node.smiles.length > 28 ? `${node.smiles.slice(0, 28)}…` : node.smiles}
@@ -238,7 +244,7 @@ export function EvolutionTree({ tree }: Props) {
 
                 {/* Method pill */}
                 <span
-                  className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full"
+                  className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full pointer-events-none"
                   style={{
                     background: `${methodColor(node.method)}1a`,
                     color: methodColor(node.method),
@@ -246,7 +252,7 @@ export function EvolutionTree({ tree }: Props) {
                 >
                   {simplifyTerm(node.method.replace(/_/g, " "), isEasyMode)}
                 </span>
-              </div>
+              </motion.div>
             ))}
           </div>
         ))}

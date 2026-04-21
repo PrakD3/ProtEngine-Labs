@@ -87,53 +87,63 @@ class PocketDetectionAgent:
         }
     
     def _compute_pocket_delta(self, wt_pocket: dict, mut_pocket: dict, ctx: dict) -> dict:
-        """Compute pocket geometry changes between wildtype and mutant."""
-        # Estimate volume change from size differences
-        wt_volume = (wt_pocket.get("size_x", 20) * 
-                     wt_pocket.get("size_y", 20) * 
-                     wt_pocket.get("size_z", 20))
-        mut_volume = (mut_pocket.get("size_x", 20) * 
-                      mut_pocket.get("size_y", 20) * 
-                      mut_pocket.get("size_z", 20))
+        """Compute pocket geometry changes between wildtype and mutant using actual AA properties."""
+        # AA Properties: {Hydrophobicity (Kyte-Doolittle), Polarity, Charge, Volume (A^3)}
+        RESIDUE_PROPS = {
+            'A': (1.8, 0, 0, 88.6),   'R': (-4.5, 1, 1, 173.4), 'N': (-3.5, 1, 0, 114.1),
+            'D': (-3.5, 1, -1, 111.1), 'C': (2.5, 0, 0, 108.5),  'E': (-3.5, 1, -1, 138.4),
+            'Q': (-3.5, 1, 0, 143.8),  'G': (-0.4, 0, 0, 60.1),   'H': (-3.2, 1, 0, 153.2),
+            'I': (4.5, 0, 0, 166.7),   'L': (3.8, 0, 0, 166.7),   'K': (-3.9, 1, 1, 168.6),
+            'M': (1.9, 0, 0, 162.9),   'F': (2.8, 0, 0, 189.9),   'P': (-1.6, 0, 0, 112.7),
+            'S': (-0.8, 1, 0, 89.0),   'T': (-0.7, 1, 0, 116.1),  'W': (-0.9, 0, 0, 227.8),
+            'Y': (-1.3, 1, 0, 193.6),  'V': (4.2, 0, 0, 140.0)
+        }
+
+        wt_aa = ctx.get("wt_aa", "X")[0].upper()
+        mut_aa = ctx.get("mut_aa", "X")[0].upper()
+
+        if wt_aa == "X" or wt_aa == mut_aa:
+            # Baseline benchmark for Wildtype-only runs (Average Human Druggable Pocket)
+            wt_props = (0.0, 0.5, 0.0, 850.0) # Hydro, Polar, Charge, Vol
+        else:
+            wt_props = RESIDUE_PROPS.get(wt_aa, (0, 0, 0, 100))
         
-        volume_delta = mut_volume - wt_volume
-        
-        # Estimate hydrophobicity change (based on position)
-        # Mutation at certain positions makes pocket more/less hydrophobic
-        hydrophobicity_delta = -0.32 if volume_delta > 30 else 0.15
-        
-        # Estimate polarity change
-        polarity_delta = 0.15
-        
-        # Charge delta (usually minimal unless mutation affects charged residues)
-        charge_delta = 0.0
-        
-        # Estimate residues displaced based on volume change
+        mut_props = RESIDUE_PROPS.get(mut_aa, (0, 0, 0, 100))
+
+        # If it's a mutation, adjust volume delta to be relative to the AA shift
+        # If it's wildtype, it's relative to the baseline
+        if wt_aa == "X" or wt_aa == mut_aa:
+            volume_delta = mut_pocket.get("volume", 850.0) - wt_props[3]
+            hydro_delta = mut_pocket.get("hydrophobicity_score", 0.5) - wt_props[0]
+            polar_delta = mut_pocket.get("polarity_score", 0.5) - wt_props[1]
+            charge_delta = mut_pocket.get("charge_score", 0.0) - wt_props[2]
+        else:
+            volume_delta = mut_props[3] - wt_props[3]
+            hydro_delta = mut_props[0] - wt_props[0]
+            polar_delta = mut_props[1] - wt_props[1]
+            charge_delta = mut_props[2] - wt_props[2]
+
         residues_displaced = []
         position = ctx.get("position", "")
         if position:
             position_str = str(position)
             if position_str.isdigit():
-                residues_displaced = [
-                    position_str,
-                    str(int(position_str) + 1),
-                    str(int(position_str) + 2),
-                ]
-        
+                residues_displaced = [position_str, str(int(position_str)+1), str(int(position_str)+2)]
+
         return {
             "volume_delta": round(volume_delta, 2),
-            "volume_wildtype": round(wt_volume, 2),
-            "volume_mutant": round(mut_volume, 2),
-            "hydrophobicity_delta": round(hydrophobicity_delta, 3),
-            "hydrophobicity_wildtype": round(8.2, 1),  # Baseline
-            "hydrophobicity_mutant": round(8.2 + hydrophobicity_delta, 1),
-            "polarity_delta": round(polarity_delta, 3),
-            "polarity_wildtype": 4.5,
-            "polarity_mutant": round(4.5 + polarity_delta, 2),
+            "volume_wildtype": round(wt_props[3], 2),
+            "volume_mutant": round(mut_props[3], 2),
+            "hydrophobicity_delta": round(hydro_delta, 3),
+            "hydrophobicity_wildtype": round(wt_props[0], 2),
+            "hydrophobicity_mutant": round(mut_props[0], 2),
+            "polarity_delta": round(polar_delta, 3),
+            "polarity_wildtype": round(wt_props[1], 2),
+            "polarity_mutant": round(mut_props[1], 2),
             "charge_delta": round(charge_delta, 3),
-            "charge_wildtype": 1.0,
-            "charge_mutant": round(1.0 + charge_delta, 2),
-            "pocket_reshaped": volume_delta > 20,
+            "charge_wildtype": round(wt_props[2], 2),
+            "charge_mutant": round(mut_props[2], 2),
+            "pocket_reshaped": abs(volume_delta) > 5.0 or abs(hydro_delta) > 0.5,
             "residues_displaced": residues_displaced,
         }
 
