@@ -1,3 +1,11 @@
+---
+title: ProtEngine Labs
+emoji: 🧬
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 7860
+---
 # ProtEngine Labs
 
 > **Precision Medicine & ProtEngine Labs Pipeline**
