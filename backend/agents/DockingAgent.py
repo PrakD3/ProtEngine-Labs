@@ -45,13 +45,11 @@ class DockingAgent:
 
     async def _execute(self, state: dict) -> dict:
         log = get_logger(self.__class__.__name__)
-        # Supporting both state naming conventions
-        molecules = state.get("generated_molecules") or state.get("molecules") or []
+        molecules = state.get("generated_molecules", [])
         pocket = state.get("binding_pocket") or {}
         pdb_content = state.get("pdb_content")
-
+        
         if not molecules or not pdb_content:
-            log.warning("No molecules or PDB content provided for docking.")
             return {"docking_results": []}
 
         local_gnina = "/home/rafan/HF26-24/tools/gnina"
@@ -68,43 +66,28 @@ class DockingAgent:
         pose_dir = Path(__file__).parent.parent / "data" / "docked_poses" / session_id
         pose_dir.mkdir(parents=True, exist_ok=True)
  
-        semaphore = asyncio.Semaphore(4)
-        completed_count = 0
-
-        async def docked_task(idx, mol_data):
-            nonlocal completed_count
-            async with semaphore:
-                smiles = mol_data.get("smiles")
-                if not smiles: return None
-                
-                energy, pose_meta = await _dock_one_async(
-                    smiles, pocket, receptor_pdbqt, exe, mode, log, 
-                    pose_dir=pose_dir, pose_id=_pose_id(smiles, idx)
-                )
-                
-                completed_count += 1
-                current_prog = 30 + int((completed_count / len(molecules)) * 60)
-                if hasattr(self, 'update_progress'):
-                    await self.update_progress(current_prog, f"Docking {completed_count}/{len(molecules)}...")
-                
-                if energy is not None:
-                    return {
-                        "smiles": smiles,
-                        "compound_name": f"Lead-{idx+1}",
-                        "binding_energy": energy,
-                        "cnn_score": pose_meta.get("cnn_score") if pose_meta else None,
-                        "cnn_affinity": pose_meta.get("cnn_affinity") if pose_meta else None,
-                        "method": mode,
-                        "pose_id": pose_meta.get("pose_id") if pose_meta else None
-                    }
-                return None
-
-        # Execute all tasks in parallel
-        tasks = [docked_task(i, m) for i, m in enumerate(molecules)]
-        docking_results_all = await asyncio.gather(*tasks)
-        
-        # Filter and return results
-        results = [r for r in docking_results_all if r is not None]
+        results = []
+        for idx, mol in enumerate(molecules[:30], start=1):
+            if state.get("cancelled"): break # Check local flag too
+            
+            smiles = mol.get("smiles")
+            if not smiles: continue
+ 
+            energy, pose_meta = await _dock_one_async(
+                smiles, pocket, receptor_pdbqt, exe, mode, log, 
+                pose_dir=pose_dir, pose_id=_pose_id(smiles, idx)
+            )
+            
+            if energy is not None:
+                results.append({
+                    "smiles": smiles,
+                    "compound_name": f"Lead-{len(results)+1}",
+                    "binding_energy": energy,
+                    "cnn_score": pose_meta.get("cnn_score") if pose_meta else None,
+                    "cnn_affinity": pose_meta.get("cnn_affinity") if pose_meta else None,
+                    "method": mode,
+                    "pose_id": pose_meta.get("pose_id") if pose_meta else None
+                })
  
         return {"docking_results": sorted(results, key=lambda x: x["binding_energy"])}
  
