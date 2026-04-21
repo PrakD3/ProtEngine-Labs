@@ -53,9 +53,12 @@ class DockingAgent:
             return {"docking_results": []}
 
         local_gnina = "/home/rafan/HF26-24/tools/gnina"
-        has_gnina = os.path.exists(local_gnina) or shutil.which("gnina") is not None
+        bin_exists = os.path.exists(local_gnina)
+        has_gnina = bin_exists or shutil.which("gnina") is not None
         mode = "gnina" if has_gnina else "vina"
         exe = _vina_exe(mode)
+        
+        log.info(f"Docking mode detection: local_path={local_gnina}, bin_exists={bin_exists}, has_gnina={has_gnina}, mode={mode}, exe={exe}")
         
         receptor_pdbqt = await _prepare_receptor_async(pdb_content, log)
         
