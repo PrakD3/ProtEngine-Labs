@@ -153,7 +153,7 @@ async def _dock_one_async(smiles, pocket, receptor_pdbqt, exe, mode, log, **kwar
         
         proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         try:
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
         except asyncio.CancelledError:
             log.info("Killing Vina subprocess due to cancellation...")
             proc.terminate()
